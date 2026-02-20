@@ -10,9 +10,9 @@
   <canvas id="embers"></canvas>
 
   <div class="center">
-    <img src="assets/smiley.png" class="smiley">
-    <h1 id="modeText">STARTING SOON</h1>
-    <div id="countdown" class="countdown">00:00</div>
+<img id="smileyImg" src="assets/Smiley.png" class="smiley" alt="Smiley">
+<h1 id="modeText">STARTING SOON</h1>
+<div id="countdown" class="countdown">00:00</div>
   </div>
 
   <script src="script.js"></script>
@@ -76,6 +76,28 @@ h1 {
   letter-spacing: 5px;
 }
 
+.goLivePop {
+  color: #ffffff !important;
+  animation: popIn 0.6s cubic-bezier(0.18, 0.89, 0.32, 1.28) forwards;
+  text-shadow:
+    0 0 25px rgba(255, 255, 255, 0.8),
+    0 0 60px rgba(255, 122, 24, 0.6);
+}
+
+@keyframes popIn {
+  0% {
+    transform: scale(0.7);
+    opacity: 0;
+  }
+  60% {
+    transform: scale(1.2);
+    opacity: 1;
+  }
+  100% {
+    transform: scale(1);
+  }
+}
+
 .countdown {
   margin-top: 10px;
   font-size: 44px;
@@ -86,90 +108,217 @@ h1 {
     0 0 18px rgba(255, 122, 24, 0.45),
     0 0 50px rgba(255, 122, 24, 0.20);
 }
+
+:root{
+  --textGlow: 0.35;      /* 0..1-ish */
+  --textPulse: 1;        /* scale */
+  --smileyGlow: 1;       /* multiplier */
+}
+
+#modeText{
+  text-shadow:
+    0 0 18px rgba(255, 122, 24, calc(var(--textGlow) * 0.55)),
+    0 0 55px rgba(255, 122, 24, calc(var(--textGlow) * 0.25));
+  transform: scale(var(--textPulse));
+  transition: text-shadow 200ms linear, transform 200ms linear;
+}
+
+body.lastMinute #modeText{
+  animation: textBreath 1.2s infinite ease-in-out;
+}
+
+@keyframes textBreath{
+  0%,100% { filter: brightness(1); }
+  50%     { filter: brightness(1.15); }
+}
+
+.smiley{
+  filter: drop-shadow(0 0 30px rgba(255,122,24,0.7));
+  transition: filter 300ms ease;
+}
+
+body.lastMinute .smiley{
+  animation: smileyHappy 1.0s infinite ease-in-out;
+  filter: drop-shadow(0 0 40px rgba(255,122,24, calc(0.55 * var(--smileyGlow))));
+}
+
+@keyframes smileyHappy{
+  0%,100% { transform: translateY(0) rotate(0deg) scale(1); }
+  35%     { transform: translateY(-8px) rotate(-2deg) scale(1.03); }
+  70%     { transform: translateY(0) rotate(2deg) scale(1.01); }
+}
   </style>
 
 
 
 <script>
 
+// ==========================
+// SETTINGS
+// ==========================
+const COUNTDOWN_MINUTES = 0.05;          // change this
+const SMILEY_NORMAL = "assets/Smiley.png";
+const SMILEY_HAPPY  = "assets/Smiley_Happy.png";
+const GO_LIVE_TEXT = "LET'S GO!"; // change this to whatever you want
+
+const BASE_W = 1920;
+const BASE_H = 1080;
+
+// Particle speed tuning (pixels/second)
+const PARTICLE_COUNT = 120;
+const VY_MIN = 25;
+const VY_MAX = 70;
+const VX_MAX = 18;
+
+// How much faster at the end of last minute
+const SPEED_MULT_MAX = 2.35; // final particle speed multiplier at 0:00
+
+// ==========================
+// DOM
+// ==========================
+const countdownEl = document.getElementById("countdown");
+const textEl = document.getElementById("modeText");
+const smileyImg = document.getElementById("smileyImg");
+
+// Canvas
 const canvas = document.getElementById("embers");
 const ctx = canvas.getContext("2d");
 
-const W = 1920;
-const H = 1080;
-
-canvas.width = W;
-canvas.height = H;
+canvas.width = BASE_W;
+canvas.height = BASE_H;
 canvas.style.width = "100%";
 canvas.style.height = "100%";
 
-let particles = [];
-const COUNT = 120;
+// ==========================
+// Helpers
+// ==========================
+function clamp01(x){ return Math.max(0, Math.min(1, x)); }
+function lerp(a,b,t){ return a + (b-a)*t; }
 
-for (let i = 0; i < COUNT; i++) {
+// Smoothstep easing for smooth transition (no sudden jump)
+function smoothstep(t){
+  t = clamp01(t);
+  return t * t * (3 - 2 * t);
+}
+
+function formatTime(sec){
+  const m = Math.floor(sec / 60);
+  const s = sec % 60;
+  return `${String(m).padStart(2,"0")}:${String(s).padStart(2,"0")}`;
+}
+
+// ==========================
+// Countdown using an end timestamp (stays accurate)
+// ==========================
+const endTime = Date.now() + COUNTDOWN_MINUTES * 60 * 1000;
+const startSeconds = COUNTDOWN_MINUTES * 60;
+const HYPE_THRESHOLD = Math.min(60, startSeconds); // 60 normally, but 5 if you test 5 seconds
+
+// Track "exact 01:00" trigger once
+let triggeredAtOneMinute = false;
+
+// ==========================
+// Particles
+// ==========================
+let particles = [];
+for (let i = 0; i < PARTICLE_COUNT; i++){
   particles.push({
-    x: Math.random() * W,
-    y: Math.random() * H,
-    r: Math.random() * 2.5 + 0.5,
-    vy: Math.random() * 60 + 30, // pixels per second (30–90)
-    vx: (Math.random() - 0.5) * 20 // drift left/right (px/s)
+    x: Math.random() * BASE_W,
+    y: Math.random() * BASE_H,
+    r: Math.random() * 2.3 + 0.6,
+    vy: lerp(VY_MIN, VY_MAX, Math.random()),
+    vx: (Math.random() * 2 - 1) * VX_MAX
   });
 }
 
+// ==========================
+// Main animation loop (time-based)
+// ==========================
 let last = performance.now();
 
-function loop(now) {
-  const dt = Math.min(0.05, (now - last) / 1000); // seconds, capped
+function loop(now){
+  const dt = Math.min(0.05, (now - last) / 1000);
   last = now;
 
-  ctx.clearRect(0, 0, W, H);
+  // Remaining seconds (ceil so it shows 01:00 at the right time)
+  const remaining = Math.max(0, Math.ceil((endTime - Date.now()) / 1000));
+  countdownEl.textContent = formatTime(remaining);
 
+  // --- LAST MINUTE PROGRESS (0..1)
+  // At 60s remaining -> progress 0
+  // At 0s remaining  -> progress 1
+  const lastMinuteProgress = clamp01((HYPE_THRESHOLD - remaining) / HYPE_THRESHOLD);
+  const eased = smoothstep(lastMinuteProgress);
+
+  // Toggle class for last minute styling
+if (remaining <= HYPE_THRESHOLD && remaining > 0){
+  document.body.classList.add("lastMinute");
+} else {
+  document.body.classList.remove("lastMinute");
+}
+
+  // EXACT 01:00 trigger (swap smiley and "happy" vibe)
+  if (!triggeredAtOneMinute && remaining === HYPE_THRESHOLD){
+  triggeredAtOneMinute = true;
+  if (smileyImg) smileyImg.src = SMILEY_HAPPY;
+}
+
+  // When not in last minute (or if you want to revert after it’s over)
+  if (remaining > HYPE_THRESHOLD){
+    triggeredAtOneMinute = false; // so it can trigger again if you refresh scene
+    if (smileyImg) smileyImg.src = SMILEY_NORMAL;
+  }
+
+  // Text glow/pulse intensity (smooth ramp)
+  // Keep it subtle before last minute, then ramp to strong.
+  const glow = lerp(0.30, 1.00, eased);
+  const pulseScale = lerp(1.00, 1.06, eased);
+  const smileyGlow = lerp(1.0, 1.4, eased);
+
+  // Update CSS variables for smooth visual changes
+  document.documentElement.style.setProperty("--textGlow", String(glow));
+  document.documentElement.style.setProperty("--textPulse", String(pulseScale));
+  document.documentElement.style.setProperty("--smileyGlow", String(smileyGlow));
+
+  // Particle speed multiplier with smooth transition
+  const speedMult = lerp(1.0, SPEED_MULT_MAX, eased);
+
+  // Render particles
+  ctx.clearRect(0, 0, BASE_W, BASE_H);
   ctx.fillStyle = "rgba(255,140,0,0.8)";
-  for (const p of particles) {
-    p.y -= p.vy * dt;
-    p.x += p.vx * dt;
 
-    // wrap around
-    if (p.y < -10) p.y = H + 10;
-    if (p.x < -10) p.x = W + 10;
-    if (p.x > W + 10) p.x = -10;
+  for (const p of particles){
+    p.y -= (p.vy * speedMult) * dt;
+    p.x += (p.vx * speedMult) * dt;
+
+    if (p.y < -10) p.y = BASE_H + 10;
+    if (p.x < -10) p.x = BASE_W + 10;
+    if (p.x > BASE_W + 10) p.x = -10;
 
     ctx.beginPath();
     ctx.arc(p.x, p.y, p.r, 0, Math.PI * 2);
     ctx.fill();
   }
 
+  // When countdown hits zero
+if (remaining <= 0) {
+  if (textEl) {
+    textEl.textContent = GO_LIVE_TEXT;
+    textEl.classList.add("goLivePop");
+  }
+
+  if (countdownEl) {
+    countdownEl.style.display = "none";
+  }
+
+  document.body.classList.remove("lastMinute");
+}
+
   requestAnimationFrame(loop);
 }
 
 requestAnimationFrame(loop);
 
-// ===== Starting Soon Countdown (duration-based) =====
-const COUNTDOWN_MINUTES = 5; // <-- change this
-let remaining = COUNTDOWN_MINUTES * 60;
-
-const countdownEl = document.getElementById("countdown");
-
-function formatTime(sec) {
-  const m = Math.floor(sec / 60);
-  const s = sec % 60;
-  return `${String(m).padStart(2, "0")}:${String(s).padStart(2, "0")}`;
-}
-
-function tick() {
-  countdownEl.textContent = formatTime(remaining);
-
-  if (remaining <= 0) {
-    countdownEl.textContent = "LIVE SOON!";
-    // Optional: little visual cue
-    countdownEl.classList.add("countdown-done");
-    return;
-  }
-  remaining -= 1;
-  setTimeout(tick, 1000);
-}
-
-tick();
 </script>
 </body>
 </html>
