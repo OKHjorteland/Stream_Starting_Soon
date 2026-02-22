@@ -1,1006 +1,370 @@
-<!DOCTYPE html>
+<!doctype html>
 <html lang="en">
 <head>
-  <meta charset="UTF-8" />
-  <meta name="viewport" content="width=1920,height=1080,initial-scale=1" />
-  <title>Oddmeister Starting Soon (Alt Layout)</title>
-  <style>
-    :root{
-      --orange: #ff7a18;
-      --gold: #ffb000;
-      --white: rgba(255,255,255,0.92);
+<meta charset="utf-8" />
+<meta name="viewport" content="width=device-width,height=device-height,initial-scale=1" />
+<title>Oddmeister • Corner Dock</title>
+<style>
+  :root{
+    --orange:#ff7a18;
+    --orange2:#ffb000;
+    --cream:#ffe9d2;
 
-      --bgPulse: 0;
-      --hudGlow: 0.35;
-      --hudScale: 1;
+    /* not-black base */
+    --bg1:#141833;
+    --bg2:#281536;
+    --bg3:#0f2f36;
 
-      --corner: 22px;
-    }
+    --dockBg: rgba(255,255,255,0.06);
+    --dockBorder: rgba(255,255,255,0.14);
+    --dockText: rgba(255,255,255,0.88);
+    --dockSub: rgba(255,233,210,0.70);
 
-    html, body{
-      margin:0; padding:0;
-      width:1920px; height:1080px;
-      overflow:hidden;
-      background:#050507;
-      font-family: system-ui, -apple-system, Segoe UI, Roboto, Arial, sans-serif;
-    }
+    --dockRadius: 24px;
+  }
 
-    /* ===== Background layers ===== */
-    .bg {
-      position:absolute; inset:0;
-      background:
-        radial-gradient(circle at 50% 45%, rgba(255,122,24,0.14) 0%, rgba(0,0,0,0) 58%),
-        radial-gradient(circle at 20% 65%, rgba(255,176,0,0.10) 0%, rgba(0,0,0,0) 55%),
-        radial-gradient(circle at 80% 70%, rgba(255,122,24,0.10) 0%, rgba(0,0,0,0) 55%),
-        linear-gradient(180deg, #060608 0%, #040406 55%, #020203 100%);
-    }
+  html,body{
+    margin:0;
+    width:100%;
+    height:100%;
+    overflow:hidden;
+    font-family: system-ui, -apple-system, Segoe UI, Roboto, Helvetica, Arial, sans-serif;
+  }
 
-    /* subtle moving noise / grain (no image needed) */
-    .grain{
-      position:absolute; inset:-40px;
-      pointer-events:none;
-      opacity:0.16;
-      background:
-        repeating-linear-gradient(0deg,
-          rgba(255,255,255,0.015) 0px,
-          rgba(255,255,255,0.015) 1px,
-          rgba(0,0,0,0.0) 2px,
-          rgba(0,0,0,0.0) 4px
-        );
-      mix-blend-mode: overlay;
-      animation: grainMove 3.5s steps(6) infinite;
-    }
-    @keyframes grainMove{
-      0%{ transform: translate3d(0,0,0); }
-      100%{ transform: translate3d(-20px, 18px, 0); }
-    }
+  .stage{
+    position:relative;
+    width:100%;
+    height:100%;
+    background:
+      radial-gradient(1100px 850px at 18% 20%, rgba(255,122,24,0.16), transparent 62%),
+      radial-gradient(900px 700px at 82% 28%, rgba(255,176,0,0.10), transparent 62%),
+      radial-gradient(1200px 900px at 55% 85%, rgba(120,80,255,0.10), transparent 65%),
+      linear-gradient(135deg, var(--bg1), var(--bg2) 48%, var(--bg3));
+  }
 
-    /* global pulse aura (driven by JS with --bgPulse) */
-    .aura{
-      position:absolute; inset:-120px;
-      pointer-events:none;
-      opacity: 0.75;
-      transform: scale(calc(1 + var(--bgPulse) * 0.035));
-      filter: blur(18px);
-      mix-blend-mode: screen;
-      background:
-        radial-gradient(circle at 55% 40%,
-          rgba(255,255,255,0.10) 0%,
-          rgba(255,176,0,0.18) 22%,
-          rgba(255,122,24,0.14) 42%,
-          rgba(255,122,24,0.00) 72%
-        );
-      transition: transform 120ms linear;
-    }
+  /* Slow “fog” drift overlay (super subtle) */
+  .fog{
+    position:absolute; inset:-18%;
+    background:
+      radial-gradient(900px 700px at 25% 35%, rgba(255,122,24,0.12), transparent 65%),
+      radial-gradient(900px 700px at 70% 55%, rgba(255,176,0,0.08), transparent 66%),
+      radial-gradient(900px 700px at 55% 25%, rgba(120,80,255,0.10), transparent 70%);
+    filter: blur(22px);
+    opacity: 0.9;
+    animation: fogDrift 10s ease-in-out infinite alternate;
+    pointer-events:none;
+    mix-blend-mode: screen;
+  }
+  @keyframes fogDrift{
+    0%{ transform: translate(-18px, 12px) scale(1.02); }
+    100%{ transform: translate(18px, -14px) scale(1.06); }
+  }
 
-    /* flames image layer (optional asset) */
-    .flames{
-      position:absolute; inset:0;
-      pointer-events:none;
-      background:url("assets/flame.png") center/cover no-repeat;
-      mix-blend-mode: screen;
-      opacity:0.55;
-      filter: saturate(1.05) contrast(1.05);
-      animation: flameBreath 3.2s ease-in-out infinite;
-    }
-    @keyframes flameBreath{
-      0%,100%{ transform: scale(1); opacity:0.52; }
-      50%{ transform: scale(1.04); opacity:0.64; }
-    }
+  /* Embers across entire canvas (but light) */
+  #embers{
+    position:absolute; inset:0;
+    width:100%; height:100%;
+    pointer-events:none;
+    mix-blend-mode: screen;
+    opacity: 0.95;
+  }
 
-    /* ===== Floating embers canvas ===== */
-    canvas#embers{
-      position:absolute; inset:0;
-      width:1920px; height:1080px;
-      pointer-events:none;
-    }
+  /* Vignette keeps edges calm */
+  .vignette{
+    position:absolute; inset:0;
+    background: radial-gradient(1200px 900px at 50% 50%, transparent 52%, rgba(0,0,0,0.22) 80%, rgba(0,0,0,0.48) 100%);
+    pointer-events:none;
+  }
 
-    /* ===== Layout: Left HUD + Right Hero ===== */
-    .layout{
-      position:absolute; inset:0;
-      display:grid;
-      grid-template-columns: 1.05fr 0.95fr;
-      gap: 34px;
-      padding: 64px 74px;
-      box-sizing:border-box;
-    }
+  /* --- Corner Dock UI --- */
+  .dock{
+    position:absolute;
+    left: clamp(18px, 2.2vw, 44px);
+    bottom: clamp(18px, 2.2vw, 44px);
+    display:flex;
+    align-items:center;
+    gap: 16px;
+    padding: 14px 16px;
+    border-radius: var(--dockRadius);
+    background: var(--dockBg);
+    border: 1px solid var(--dockBorder);
+    box-shadow: 0 24px 90px rgba(0,0,0,0.38);
+    backdrop-filter: blur(12px);
+    transform: translateZ(0);
+  }
 
-    /* Left HUD panel */
-    .hud{
-      position:relative;
-      border-radius: var(--corner);
-      padding: 26px 26px 22px 26px;
-      background:
-        linear-gradient(180deg, rgba(16,16,20,0.62), rgba(8,8,10,0.45));
-      box-shadow:
-        0 20px 70px rgba(0,0,0,0.55),
-        inset 0 0 0 1px rgba(255,122,24,0.16);
-      backdrop-filter: blur(8px);
-      transform: scale(var(--hudScale));
-      transition: transform 160ms ease;
-      overflow:hidden;
-    }
+  .badge{
+    width: 56px;
+    height: 56px;
+    border-radius: 16px;
+    display:grid;
+    place-items:center;
+    position:relative;
+    overflow:hidden;
+  }
 
-    /* HUD inner glow */
-    .hud::before{
-      content:"";
-      position:absolute; inset:-80px;
-      pointer-events:none;
-      opacity: calc(0.55 + var(--hudGlow) * 0.6);
-      background:
-        radial-gradient(circle at 22% 18%,
-          rgba(255,122,24,0.28) 0%,
-          rgba(255,122,24,0.00) 52%),
-        radial-gradient(circle at 85% 62%,
-          rgba(255,176,0,0.18) 0%,
-          rgba(255,176,0,0.00) 56%);
-      filter: blur(18px);
-      mix-blend-mode: screen;
-    }
+  /* Warm accent behind badge */
+  .badge:before{
+    content:"";
+    position:absolute; inset:-60%;
+    background:
+      radial-gradient(circle at 35% 40%, rgba(255,122,24,0.45), transparent 62%),
+      radial-gradient(circle at 70% 70%, rgba(255,176,0,0.22), transparent 65%);
+    filter: blur(10px);
+    opacity: 0.95;
+    animation: badgeDrift 5.8s ease-in-out infinite alternate;
+  }
+  @keyframes badgeDrift{
+    0%{ transform: translate(-10px, 8px) scale(1.02); }
+    100%{ transform: translate(10px, -8px) scale(1.08); }
+  }
 
-    /* HUD header */
-    .hudTop{
-      display:flex;
-      align-items:center;
-      justify-content:space-between;
-      gap: 18px;
-      position:relative;
-      z-index:2;
-    }
+  .smiley{
+    width: 44px;
+    height: 44px;
+    z-index:2;
+    filter: drop-shadow(0 10px 22px rgba(0,0,0,0.35));
+  }
 
-    .brand{
-      display:flex;
-      align-items:center;
-      gap: 14px;
-    }
+  .text{
+    display:flex;
+    flex-direction:column;
+    gap: 2px;
+    min-width: 240px;
+  }
 
-    .badge{
-      width: 46px; height: 46px;
-      border-radius: 14px;
-      background: linear-gradient(135deg, rgba(255,122,24,0.95), rgba(255,176,0,0.9));
-      box-shadow:
-        0 12px 28px rgba(255,122,24,0.20),
-        inset 0 0 0 1px rgba(255,255,255,0.12);
-      display:grid; place-items:center;
-      color: rgba(0,0,0,0.85);
-      font-weight: 900;
-      letter-spacing: 0.5px;
-    }
+  .title{
+    font-weight: 950;
+    letter-spacing: 0.02em;
+    color: var(--dockText);
+    font-size: 16px;
+    line-height: 1.2;
+    display:flex;
+    align-items:center;
+    gap: 10px;
+  }
 
-    .brandText{
-      line-height:1.05;
-    }
-    .brandText .name{
-      font-weight: 900;
-      font-size: 22px;
-      letter-spacing: 0.6px;
-      color: rgba(255,255,255,0.92);
-      text-shadow: 0 0 22px rgba(255,122,24,0.18);
-    }
-    .brandText .tag{
-      font-size: 13px;
-      opacity: 0.74;
-      letter-spacing: 0.4px;
-      color: rgba(255,255,255,0.78);
-    }
+  .dot{
+    width: 8px; height: 8px;
+    border-radius: 999px;
+    background: var(--orange);
+    box-shadow: 0 0 14px rgba(255,122,24,0.65);
+  }
 
-    .statusPill{
-      display:flex;
-      align-items:center;
-      gap: 10px;
-      padding: 10px 12px;
-      border-radius: 999px;
-      background: rgba(0,0,0,0.22);
-      box-shadow: inset 0 0 0 1px rgba(255,122,24,0.18);
-      color: rgba(255,255,255,0.86);
-      font-weight: 700;
-      letter-spacing: 0.5px;
-      white-space:nowrap;
-    }
-    .dot{
-      width: 10px; height: 10px;
-      border-radius: 50%;
-      background: rgba(255,176,0,0.95);
-      box-shadow: 0 0 18px rgba(255,176,0,0.45);
-      animation: dotBlink 1.2s ease-in-out infinite;
-    }
-    @keyframes dotBlink{
-      0%,100%{ transform: scale(1); opacity: 0.65; }
-      50%{ transform: scale(1.35); opacity: 1; }
-    }
+  .sub{
+    color: var(--dockSub);
+    font-weight: 800;
+    letter-spacing: 0.10em;
+    text-transform: uppercase;
+    font-size: 12px;
+  }
 
-    /* Big headline */
-    .headline{
-      position:relative;
-      z-index:2;
-      margin-top: 22px;
-    }
-    .headline .title{
-      font-size: 68px;
-      font-weight: 900;
-      letter-spacing: 7px;
-      color: rgba(255,176,0,0.96);
-      text-shadow:
-        0 0 22px rgba(255,122,24,0.22),
-        0 0 70px rgba(255,122,24,0.10);
-      margin: 0;
-    }
-    .headline .subtitle{
-      margin: 12px 0 0;
-      font-size: 18px;
-      letter-spacing: 0.6px;
-      color: rgba(255,255,255,0.72);
-      max-width: 600px;
-    }
+  .timer{
+    margin-left: 10px;
+    display:flex;
+    flex-direction:column;
+    align-items:flex-end;
+    gap: 2px;
+    min-width: 110px;
+  }
 
-    /* “Pulse Lines” (audio visualizer vibe) */
-    .pulseLines{
-      position:relative;
-      z-index:2;
-      margin-top: 22px;
-      height: 74px;
-      border-radius: 16px;
-      background: rgba(0,0,0,0.18);
-      box-shadow: inset 0 0 0 1px rgba(255,122,24,0.14);
-      overflow:hidden;
-    }
-    .pulseLines::before{
-      content:"";
-      position:absolute; inset:-80px;
-      background: radial-gradient(circle at 30% 60%, rgba(255,122,24,0.14), rgba(0,0,0,0));
-      filter: blur(16px);
-      opacity: 0.7;
-      mix-blend-mode: screen;
-    }
-    .bars{
-      position:absolute;
-      left: 18px; right: 18px;
-      top: 14px; bottom: 14px;
-      display:flex;
-      align-items:flex-end;
-      gap: 8px;
-      z-index:2;
-    }
-    .bar{
-      flex: 1 1 0;
-      border-radius: 999px;
-      background: linear-gradient(180deg, rgba(255,245,230,0.72), rgba(255,176,0,0.88), rgba(255,122,24,0.85));
-      box-shadow: 0 0 18px rgba(255,122,24,0.16);
-      height: 18px;
-      transform-origin: 50% 100%;
-    }
+  .time{
+    font-variant-numeric: tabular-nums;
+    font-size: 26px;
+    font-weight: 950;
+    color: rgba(255,255,255,0.92);
+    letter-spacing: 0.02em;
+    line-height: 1.05;
+  }
+  .state{
+    font-size: 12px;
+    font-weight: 850;
+    color: rgba(255,233,210,0.72);
+    letter-spacing: 0.12em;
+    text-transform: uppercase;
+  }
 
-    /* Info cards row */
-    .cards{
-      position:relative;
-      z-index:2;
-      margin-top: 22px;
-      display:grid;
-      grid-template-columns: 1fr 1fr;
-      gap: 14px;
-    }
-    .card{
-      border-radius: 18px;
-      padding: 14px 14px 12px;
-      background: rgba(0,0,0,0.18);
-      box-shadow: inset 0 0 0 1px rgba(255,122,24,0.14);
-    }
-    .card .label{
-      font-size: 12px;
-      letter-spacing: 0.5px;
-      opacity: 0.70;
-      color: rgba(255,255,255,0.78);
-    }
-    .card .value{
-      margin-top: 8px;
-      font-weight: 900;
-      letter-spacing: 0.6px;
-      font-size: 18px;
-      color: rgba(255,255,255,0.92);
-      text-shadow: 0 0 22px rgba(255,122,24,0.10);
-    }
+  /* Last 10 seconds: warm wash + dock pulse */
+  .heat{
+    position:absolute; inset:0;
+    background: radial-gradient(900px 700px at 30% 85%, rgba(255,122,24,0.18), transparent 62%);
+    opacity: 0;
+    pointer-events:none;
+    mix-blend-mode: screen;
+  }
 
-    /* Countdown capsule */
-    .countdownCapsule{
-      position:relative;
-      z-index:2;
-      margin-top: 18px;
-      display:flex;
-      align-items:center;
-      justify-content:space-between;
-      gap: 18px;
-      padding: 14px 16px;
-      border-radius: 20px;
-      background: rgba(0,0,0,0.22);
-      box-shadow:
-        inset 0 0 0 1px rgba(255,122,24,0.16),
-        0 14px 50px rgba(0,0,0,0.40);
-      overflow:hidden;
-    }
-    .countdownCapsule::before{
-      content:"";
-      position:absolute; inset:-80px;
-      background: radial-gradient(circle at 30% 50%, rgba(255,176,0,0.18), rgba(0,0,0,0));
-      filter: blur(14px);
-      mix-blend-mode: screen;
-      opacity: 0.75;
-    }
-    .countdownLeft{
-      display:flex;
-      flex-direction:column;
-      gap: 6px;
-      z-index:2;
-    }
-    .countdownLeft .small{
-      font-size: 12px;
-      opacity: 0.72;
-      letter-spacing: 0.6px;
-      color: rgba(255,255,255,0.80);
-    }
-    .countdownTime{
-      font-weight: 1000;
-      font-size: 44px;
-      letter-spacing: 4px;
-      color: rgba(255,255,255,0.92);
-      text-shadow:
-        0 0 22px rgba(255,122,24,0.20),
-        0 0 60px rgba(255,122,24,0.10);
-      z-index:2;
-    }
+  .last10 .heat{
+    opacity: 1;
+    animation: heatPulse 0.9s ease-in-out infinite;
+  }
+  @keyframes heatPulse{
+    0%{ opacity: .10; transform: scale(1); }
+    50%{ opacity: .26; transform: scale(1.02); }
+    100%{ opacity: .10; transform: scale(1); }
+  }
 
-    .nextUp{
-      z-index:2;
-      text-align:right;
-    }
-    .nextUp .small{
-      font-size: 12px;
-      opacity: 0.72;
-      letter-spacing: 0.6px;
-      color: rgba(255,255,255,0.80);
-    }
-    .nextUp .value{
-      margin-top: 6px;
-      font-size: 18px;
-      font-weight: 900;
-      color: rgba(255,176,0,0.96);
-      letter-spacing: 0.6px;
-      text-shadow: 0 0 22px rgba(255,122,24,0.16);
-    }
+  .last10 .dock{
+    animation: dockPulse 0.9s ease-in-out infinite;
+    border-color: rgba(255,122,24,0.32);
+  }
+  @keyframes dockPulse{
+    0%{ transform: translateZ(0) scale(1); }
+    50%{ transform: translateZ(0) scale(1.02); }
+    100%{ transform: translateZ(0) scale(1); }
+  }
 
-    /* Right hero column */
-    .hero{
-      position:relative;
-      border-radius: var(--corner);
-      overflow:hidden;
-      background:
-        radial-gradient(circle at 50% 45%, rgba(255,122,24,0.18) 0%, rgba(0,0,0,0) 62%),
-        linear-gradient(180deg, rgba(10,10,12,0.65), rgba(4,4,6,0.35));
-      box-shadow:
-        0 22px 80px rgba(0,0,0,0.55),
-        inset 0 0 0 1px rgba(255,122,24,0.14);
-      backdrop-filter: blur(8px);
-    }
-
-    /* Spotlight behind smiley */
-    .spot{
-      position:absolute; inset:-120px;
-      background: radial-gradient(circle at 55% 35%,
-        rgba(255,176,0,0.20) 0%,
-        rgba(255,122,24,0.14) 25%,
-        rgba(255,122,24,0.00) 65%);
-      filter: blur(20px);
-      mix-blend-mode: screen;
-      opacity: 0.85;
-      animation: spotDrift 6s ease-in-out infinite;
-    }
-    @keyframes spotDrift{
-      0%,100%{ transform: translate3d(0,0,0) scale(1); }
-      50%{ transform: translate3d(-16px, 10px, 0) scale(1.03); }
-    }
-
-    /* Orbit canvas around smiley */
-    canvas#orbit{
-      position:absolute;
-      left: 50%;
-      top: 42%;
-      transform: translate(-50%,-50%);
-      width: 520px;
-      height: 520px;
-      pointer-events:none;
-      filter: drop-shadow(0 0 22px rgba(255,122,24,0.22));
-    }
-
-    /* Smiley wrap in hero */
-    .heroCenter{
-      position:absolute;
-      left: 50%;
-      top: 42%;
-      transform: translate(-50%,-50%);
-      width: 260px; height: 260px;
-      display:grid;
-      place-items:center;
-      pointer-events:none;
-      z-index: 3;
-    }
-
-    .haloBurst{
-      position:absolute;
-      inset:-60px;
-      border-radius:50%;
-      opacity:0;
-      transform: scale(0.2);
-      pointer-events:none;
-      mix-blend-mode: screen;
-      background: radial-gradient(circle,
-        rgba(255,255,255,0.85) 0%,
-        rgba(255,176,0,0.65) 28%,
-        rgba(255,122,24,0.45) 52%,
-        rgba(255,122,24,0.0) 76%
-      );
-      filter: blur(10px);
-    }
-
-    #smileyHero{
-      width: 220px;
-      height: 220px;
-      object-fit: contain;
-      filter: drop-shadow(0 0 34px rgba(255,122,24,0.65));
-      animation: heroIdle 4.2s ease-in-out infinite;
-    }
-    @keyframes heroIdle{
-      0%,100%{ transform: translateY(0) scale(1); }
-      50%{ transform: translateY(-6px) scale(1.03); }
-    }
-
-    /* Full moment burst */
-    .heroCenter.fullMoment .haloBurst{
-      animation: haloBurst 900ms cubic-bezier(0.18,0.89,0.32,1.28) forwards;
-    }
-    .heroCenter.fullMoment #smileyHero{
-      animation: smileyPop 650ms cubic-bezier(0.18,0.89,0.32,1.28) forwards;
-      filter:
-        drop-shadow(0 0 44px rgba(255,255,255,0.72))
-        drop-shadow(0 0 100px rgba(255,122,24,0.72));
-    }
-
-    @keyframes haloBurst{
-      0%   { opacity: 0.95; transform: scale(0.25); }
-      40%  { opacity: 1;    transform: scale(1.45); }
-      70%  { opacity: 0.6;  transform: scale(2.05); }
-      100% { opacity: 0;    transform: scale(2.55); }
-    }
-
-    @keyframes smileyPop{
-      0%   { transform: scale(1); }
-      35%  { transform: scale(1.18); }
-      65%  { transform: scale(0.98); }
-      100% { transform: scale(1.06); }
-    }
-
-    /* Hero bottom tagline */
-    .heroBottom{
-      position:absolute;
-      left: 32px;
-      right: 32px;
-      bottom: 28px;
-      display:flex;
-      align-items:flex-end;
-      justify-content:space-between;
-      gap: 18px;
-      z-index: 4;
-    }
-
-    .heroCallout{
-      max-width: 520px;
-    }
-    .heroCallout .big{
-      font-weight: 1000;
-      letter-spacing: 1px;
-      font-size: 26px;
-      color: rgba(255,255,255,0.92);
-      text-shadow: 0 0 26px rgba(255,122,24,0.12);
-    }
-    .heroCallout .small{
-      margin-top: 8px;
-      font-size: 14px;
-      letter-spacing: 0.4px;
-      opacity: 0.72;
-      color: rgba(255,255,255,0.78);
-    }
-
-    .heroBadge{
-      padding: 10px 12px;
-      border-radius: 16px;
-      background: rgba(0,0,0,0.20);
-      box-shadow: inset 0 0 0 1px rgba(255,122,24,0.14);
-      text-align:right;
-      min-width: 210px;
-    }
-    .heroBadge .small{
-      font-size: 12px;
-      opacity: 0.72;
-      letter-spacing: 0.6px;
-      color: rgba(255,255,255,0.80);
-    }
-    .heroBadge .big{
-      margin-top: 6px;
-      font-size: 18px;
-      font-weight: 950;
-      letter-spacing: 0.6px;
-      color: rgba(255,176,0,0.96);
-      text-shadow: 0 0 22px rgba(255,122,24,0.14);
-    }
-
-    /* “We’re live” overlay */
-    .liveOverlay{
-      position:absolute; inset:0;
-      display:grid;
-      place-items:center;
-      pointer-events:none;
-      opacity:0;
-      transition: opacity 220ms ease;
-      z-index: 999;
-    }
-    .liveOverlay.on{ opacity: 1; }
-
-    .liveText{
-      font-weight: 1000;
-      font-size: 92px;
-      letter-spacing: 6px;
-      color: rgba(255,255,255,0.96);
-      text-shadow:
-        0 0 28px rgba(255,255,255,0.22),
-        0 0 90px rgba(255,122,24,0.22);
-      transform: scale(0.86);
-      opacity: 0;
-    }
-    .liveOverlay.on .liveText{
-      animation: livePop 720ms cubic-bezier(0.18,0.89,0.32,1.28) forwards;
-    }
-    @keyframes livePop{
-      0%{ opacity:0; transform: scale(0.75); }
-      60%{ opacity:1; transform: scale(1.12); }
-      100%{ opacity:1; transform: scale(1); }
-    }
-  </style>
+  /* Make sure it still looks good if the Browser Source is not exactly 1920x1080 */
+  .safe{
+    position:absolute; inset:0;
+    pointer-events:none;
+  }
+</style>
 </head>
 <body>
-  <div class="bg"></div>
-  <div class="aura"></div>
-  <canvas id="embers"></canvas>
-  <div class="flames"></div>
-  <div class="grain"></div>
+  <div class="stage" id="root">
+    <div class="fog"></div>
+    <canvas id="embers"></canvas>
+    <div class="vignette"></div>
+    <div class="heat"></div>
 
-  <div class="layout">
-    <!-- LEFT HUD -->
-    <section class="hud" id="hud">
-      <div class="hudTop">
-        <div class="brand">
-          <div class="badge">O</div>
-          <div class="brandText">
-            <div class="name">ODDMEISTER</div>
-            <div class="tag">controlling pixels with brain zaps & finger waggles</div>
-          </div>
-        </div>
-        <div class="statusPill">
-          <span class="dot"></span>
-          <span id="statusLabel">WARMING UP</span>
-        </div>
+    <div class="dock">
+      <div class="badge">
+        <img class="smiley" src="assets/smiley.png" alt="Smiley"/>
       </div>
 
-      <div class="headline">
-        <h1 class="title" id="headlineTitle">STARTING SOON</h1>
-        <p class="subtitle" id="subtitle">
-          Grab a drink. Stretch your gamer fingers. The cozy chaos begins in a moment.
-        </p>
+      <div class="text">
+        <div class="title"><span class="dot"></span> Oddmeister • Starting Soon</div>
+        <div class="sub">loading vibes…</div>
       </div>
 
-      <div class="pulseLines">
-        <div class="bars" id="bars"></div>
+      <div class="timer">
+        <div class="time" id="time">05:00</div>
+        <div class="state" id="state">warming up</div>
       </div>
+    </div>
 
-      <div class="cards">
-        <div class="card">
-          <div class="label">TODAY’S MISSION</div>
-          <div class="value" id="mission">SURVIVE & LOOK COOL DOING IT</div>
-        </div>
-        <div class="card">
-          <div class="label">VIBE CHECK</div>
-          <div class="value" id="vibe">COZY 🔥 CHAOS</div>
-        </div>
-      </div>
-
-      <div class="countdownCapsule">
-        <div class="countdownLeft">
-          <div class="small">COUNTDOWN</div>
-          <div class="countdownTime" id="countdown">00:00</div>
-        </div>
-        <div class="nextUp">
-          <div class="small">NEXT UP</div>
-          <div class="value" id="nextUp">CHAT → GAME → WINS</div>
-        </div>
-      </div>
-    </section>
-
-    <!-- RIGHT HERO -->
-    <section class="hero">
-      <div class="spot"></div>
-      <canvas id="orbit" width="520" height="520"></canvas>
-
-      <div class="heroCenter" id="heroCenter">
-        <div class="haloBurst"></div>
-        <img id="smileyHero" src="assets/Smiley.png" alt="Smiley">
-      </div>
-
-      <div class="heroBottom">
-        <div class="heroCallout">
-          <div class="big" id="heroBig">WELCOME TO ODDY ZONE</div>
-          <div class="small" id="heroSmall">Say hi in chat — I read everything (even the cursed stuff).</div>
-        </div>
-        <div class="heroBadge">
-          <div class="small">STREAM STATUS</div>
-          <div class="big" id="heroStatus">INITIALIZING…</div>
-        </div>
-      </div>
-    </section>
-  </div>
-
-  <div class="liveOverlay" id="liveOverlay">
-    <div class="liveText" id="liveText">LET’S GO!</div>
+    <div class="safe"></div>
   </div>
 
 <script>
-/* ==========================
-   SETTINGS (change freely)
-========================== */
-const COUNTDOWN_MINUTES = 1.00;          // set your real starting soon time
-const SMILEY_NORMAL = "assets/Smiley.png";
-const SMILEY_HAPPY  = "assets/Smiley_Happy.png"; // optional
-const LIVE_TEXT = "LET’S GO!";
+  // -------- Countdown --------
+  const root = document.getElementById("root");
+  const timeEl = document.getElementById("time");
+  const stateEl = document.getElementById("state");
 
-const BASE_W = 1920;
-const BASE_H = 1080;
+  let totalStart = 5 * 60; // change me
+  let total = totalStart;
 
-// Embers
-const EMBER_COUNT = 120;
-const VY_MIN = 14;
-const VY_MAX = 48;
-const VX_MAX = 12;
+  const fmt = (s) => {
+    const m = Math.floor(s/60);
+    const r = s%60;
+    return String(m).padStart(2,"0") + ":" + String(r).padStart(2,"0");
+  };
 
-// Orbit (around smiley)
-const ORBIT_W_START = 0.45;
-const ORBIT_W_END   = 2.30;
-const ORBIT_R_START = 210;
-const ORBIT_R_END   = 120;
-const ORBIT_COUNT   = 48;
+  function tick(){
+    timeEl.textContent = fmt(total);
 
-// “Final 10” background pulse intensity
-const FINAL_TEN = 10;
-
-// Spark burst at live
-const SPARKS = 220;
-
-// HUD equalizer bars count
-const HUD_BARS = 22;
-
-/* ==========================
-   DOM
-========================== */
-const countdownEl = document.getElementById("countdown");
-const statusLabel = document.getElementById("statusLabel");
-const heroStatus  = document.getElementById("heroStatus");
-const headlineTitle = document.getElementById("headlineTitle");
-
-const heroCenter = document.getElementById("heroCenter");
-const smileyHero = document.getElementById("smileyHero");
-
-const liveOverlay = document.getElementById("liveOverlay");
-const liveText = document.getElementById("liveText");
-
-liveText.textContent = LIVE_TEXT;
-
-/* ==========================
-   Helpers
-========================== */
-function clamp01(x){ return Math.max(0, Math.min(1, x)); }
-function lerp(a,b,t){ return a + (b-a)*t; }
-function smoothstep(t){ t = clamp01(t); return t*t*(3-2*t); }
-function formatTime(sec){
-  const m = Math.floor(sec / 60);
-  const s = sec % 60;
-  return `${String(m).padStart(2,"0")}:${String(s).padStart(2,"0")}`;
-}
-
-/* ==========================
-   Timing
-========================== */
-const startSeconds = Math.max(1, COUNTDOWN_MINUTES * 60);
-const endTime = Date.now() + startSeconds * 1000;
-const HYPE_THRESHOLD = Math.min(60, startSeconds);
-
-/* ==========================
-   Background Embers Canvas
-========================== */
-const emberCanvas = document.getElementById("embers");
-const ectx = emberCanvas.getContext("2d");
-emberCanvas.width = BASE_W;
-emberCanvas.height = BASE_H;
-emberCanvas.style.width = "100%";
-emberCanvas.style.height = "100%";
-
-const embers = [];
-for (let i=0;i<EMBER_COUNT;i++){
-  embers.push({
-    x: Math.random()*BASE_W,
-    y: Math.random()*BASE_H,
-    r: 0.7 + Math.random()*2.2,
-    vy: lerp(VY_MIN, VY_MAX, Math.random()),
-    vx: (Math.random()*2-1)*VX_MAX,
-    a: 0.18 + Math.random()*0.55
-  });
-}
-
-/* ==========================
-   Orbit Canvas
-========================== */
-const orbit = document.getElementById("orbit");
-const octx = orbit.getContext("2d");
-const O = { x: orbit.width/2, y: orbit.height/2 };
-
-const orbitEmbers = [];
-for (let i=0;i<ORBIT_COUNT;i++){
-  orbitEmbers.push({
-    a: (i/ORBIT_COUNT) * Math.PI*2,
-    da: (Math.random()*0.65 + 0.65) * (Math.random()<0.5 ? 1 : -1),
-    size: 1.0 + Math.random()*2.0,
-    tw: Math.random()*Math.PI*2
-  });
-}
-
-let leaderAngle = 0;
-let sparks = [];
-let sparksActive = false;
-let wentLive = false;
-let triggeredHype = false;
-
-/* ==========================
-   HUD Equalizer Bars
-========================== */
-const barsWrap = document.getElementById("bars");
-const bars = [];
-for (let i=0;i<HUD_BARS;i++){
-  const b = document.createElement("div");
-  b.className = "bar";
-  barsWrap.appendChild(b);
-  bars.push({ el: b, phase: Math.random()*10, speed: 0.7+Math.random()*0.9 });
-}
-
-/* ==========================
-   FX
-========================== */
-function triggerFullMoment(){
-  heroCenter.classList.remove("fullMoment");
-  void heroCenter.offsetWidth;
-  heroCenter.classList.add("fullMoment");
-}
-
-function spawnSparkBurst(){
-  sparksActive = true;
-  sparks = [];
-  for (let i=0;i<SPARKS;i++){
-    const ang = Math.random()*Math.PI*2;
-    const spd = 240 + Math.random()*920;
-    sparks.push({
-      x: O.x, y: O.y,
-      vx: Math.cos(ang)*spd,
-      vy: Math.sin(ang)*spd,
-      life: 0.65 + Math.random()*0.85,
-      age: 0,
-      size: 0.8 + Math.random()*2.4
-    });
-  }
-}
-
-/* ==========================
-   Render loops
-========================== */
-let last = performance.now();
-
-function renderBackground(dt, hype){
-  // gentle trails
-  ectx.fillStyle = "rgba(0,0,0,0.20)";
-  ectx.fillRect(0,0,BASE_W,BASE_H);
-
-  const speed = lerp(1.0, 1.9, hype);
-  for (const p of embers){
-    p.y -= p.vy*speed*dt;
-    p.x += p.vx*speed*dt;
-
-    if (p.y < -10) p.y = BASE_H + 10;
-    if (p.x < -10) p.x = BASE_W + 10;
-    if (p.x > BASE_W + 10) p.x = -10;
-
-    ectx.fillStyle = `rgba(255,140,0,${p.a})`;
-    ectx.beginPath();
-    ectx.arc(p.x, p.y, p.r, 0, Math.PI*2);
-    ectx.fill();
-
-    ectx.fillStyle = `rgba(255,220,170,${p.a*0.33})`;
-    ectx.beginPath();
-    ectx.arc(p.x+0.8, p.y-0.8, p.r*0.55, 0, Math.PI*2);
-    ectx.fill();
-  }
-}
-
-function renderHUD(now, hype, remaining){
-  // equalizer bars: motion-based, looks expensive even though it's tiny JS
-  const base = 0.15 + hype*0.35;
-  for (const b of bars){
-    const t = now*0.001*b.speed + b.phase;
-    const h = base + (Math.sin(t)*0.5+0.5) * (0.65 + hype*0.35);
-    const px = 10 + h*46; // 10..~56
-    b.el.style.height = `${px}px`;
-    b.el.style.opacity = `${0.70 + hype*0.22}`;
-    b.el.style.transform = `scaleY(${0.95 + (Math.sin(t*1.2)*0.03)})`;
-  }
-
-  if (remaining <= 0){
-    statusLabel.textContent = "LIVE";
-    heroStatus.textContent = "WE’RE LIVE";
-    headlineTitle.textContent = "WE’RE LIVE";
-  } else if (remaining <= 10){
-    statusLabel.textContent = "FINAL COUNTDOWN";
-    heroStatus.textContent = "FINAL 10…";
-  } else if (remaining <= 60){
-    statusLabel.textContent = "GETTING READY";
-    heroStatus.textContent = "ALMOST READY";
-  } else {
-    statusLabel.textContent = "WARMING UP";
-    heroStatus.textContent = "INITIALIZING…";
-  }
-}
-
-function renderOrbit(dt, progress, hype, remaining){
-  const p = smoothstep(progress);
-
-  // tighten + speed up as time passes
-  const R = lerp(ORBIT_R_START, ORBIT_R_END, p);
-  const W = lerp(ORBIT_W_START, ORBIT_W_END, p) * lerp(1.0, 1.2, hype);
-
-  // trails
-  octx.fillStyle = `rgba(0,0,0,${lerp(0.20, 0.06, p)})`;
-  octx.fillRect(0,0,orbit.width,orbit.height);
-
-  octx.globalCompositeOperation = "lighter";
-
-  // draw orbit embers
-  for (const e of orbitEmbers){
-    e.tw += dt*2.0;
-    const wobble = Math.sin(e.tw)*0.9;
-
-    e.a += dt * W * e.da;
-    const rr = R + wobble*6;
-
-    const x = O.x + Math.cos(e.a)*rr;
-    const y = O.y + Math.sin(e.a)*rr;
-
-    const depth = (Math.sin(e.a)*0.5+0.5);
-    const a = (0.22 + depth*0.55) * (0.85 + hype*0.35);
-
-    octx.fillStyle = `rgba(255,140,0,${a})`;
-    octx.beginPath();
-    octx.arc(x,y, e.size + depth*1.0, 0, Math.PI*2);
-    octx.fill();
-
-    octx.fillStyle = `rgba(255,240,210,${a*0.30})`;
-    octx.beginPath();
-    octx.arc(x+1,y-1, (e.size*0.55), 0, Math.PI*2);
-    octx.fill();
-  }
-
-  // leader ember (the satisfying part)
-  leaderAngle += dt * W * 1.05;
-  const lx = O.x + Math.cos(leaderAngle)* (R+2);
-  const ly = O.y + Math.sin(leaderAngle)* (R+2);
-
-  const g = octx.createRadialGradient(lx, ly, 0, lx, ly, 22);
-  g.addColorStop(0, `rgba(255,245,220,${0.85*(0.7+hype*0.4)})`);
-  g.addColorStop(0.35, `rgba(255,180,70,${0.65*(0.7+hype*0.4)})`);
-  g.addColorStop(1, `rgba(255,140,0,0)`);
-  octx.fillStyle = g;
-  octx.beginPath();
-  octx.arc(lx, ly, 22, 0, Math.PI*2);
-  octx.fill();
-
-  octx.fillStyle = `rgba(255,240,210,${0.90*(0.7+hype*0.35)})`;
-  octx.beginPath();
-  octx.arc(lx, ly, 5.4, 0, Math.PI*2);
-  octx.fill();
-
-  // spark burst when live hits
-  if (sparksActive){
-    for (const s of sparks){
-      s.age += dt;
-      s.x += s.vx*dt;
-      s.y += s.vy*dt;
-      s.vy += 160*dt;
-
-      s.vx *= Math.pow(0.22, dt);
-      s.vy *= Math.pow(0.22, dt);
-
-      const t = clamp01(1 - s.age/s.life);
-      const a = t*0.95;
-
-      octx.fillStyle = `rgba(255,235,200,${a})`;
-      octx.beginPath();
-      octx.arc(s.x, s.y, s.size*(0.6+t), 0, Math.PI*2);
-      octx.fill();
+    if (total <= 10){
+      root.classList.add("last10");
+      stateEl.textContent = "lock in…";
+    } else {
+      root.classList.remove("last10");
+      stateEl.textContent = "warming up";
     }
-    sparks = sparks.filter(s => s.age < s.life);
-    if (!sparks.length) sparksActive = false;
+
+    total = Math.max(0, total - 1);
+    if (total === 0){
+      stateEl.textContent = "go time";
+      clearInterval(timer);
+    }
+  }
+  tick();
+  const timer = setInterval(tick, 1000);
+
+  // -------- Embers (OBS-safe) --------
+  const canvas = document.getElementById("embers");
+  const ctx = canvas.getContext("2d", { alpha:true });
+
+  let W=0,H=0,DPR=1;
+
+  function resize(){
+    const rect = canvas.getBoundingClientRect();
+    DPR = Math.max(1, Math.min(2, window.devicePixelRatio || 1));
+    W = Math.floor(rect.width);
+    H = Math.floor(rect.height);
+    canvas.width = Math.floor(W * DPR);
+    canvas.height = Math.floor(H * DPR);
+    ctx.setTransform(DPR,0,0,DPR,0,0);
   }
 
-  octx.globalCompositeOperation = "source-over";
-}
+  const ro = new ResizeObserver(resize);
+  ro.observe(canvas);
+  window.addEventListener("load", resize);
 
-/* ==========================
-   Main loop
-========================== */
-function loop(now){
-  const dt = Math.min(0.05, (now - last)/1000);
-  last = now;
+  const embers=[];
+  const MAX=120;
+  const rand=(a,b)=>a+Math.random()*(b-a);
 
-  const remaining = Math.max(0, Math.ceil((endTime - Date.now())/1000));
-  countdownEl.textContent = formatTime(remaining);
-
-  const elapsed = startSeconds - remaining;
-  const progress = clamp01(elapsed / startSeconds);
-
-  // hype ramps over last minute
-  const hypeP = clamp01((HYPE_THRESHOLD - remaining) / HYPE_THRESHOLD);
-  const hype = smoothstep(hypeP);
-
-  // global pulse aura stronger near final 10
-  const finalP = clamp01((FINAL_TEN - remaining) / FINAL_TEN);
-  const finalEase = smoothstep(finalP);
-  const breath = (Math.sin(now*0.010)*0.5+0.5); // 0..1
-  const bgPulse = lerp(0.12, 1.0, finalEase) * lerp(0.35, 1.0, breath);
-
-  document.documentElement.style.setProperty("--bgPulse", String(bgPulse));
-  document.documentElement.style.setProperty("--hudGlow", String(lerp(0.25, 0.95, hype)));
-  document.documentElement.style.setProperty("--hudScale", String(lerp(1.00, 1.01, finalEase)));
-
-  // smiley swap near last minute if you want
-  if (!triggeredHype && remaining === HYPE_THRESHOLD){
-    triggeredHype = true;
-    // optional: swap to happy smiley for last minute
-    // smileyHero.src = SMILEY_HAPPY;
-  }
-  if (remaining > HYPE_THRESHOLD){
-    triggeredHype = false;
-    smileyHero.src = SMILEY_NORMAL;
+  function spawn(){
+    const hotspot = Math.random()<0.55;
+    const x = hotspot ? (W*0.45 + rand(-320,320)) : rand(0,W);
+    const y = rand(H*0.72, H+50);
+    const r = rand(1.0, 3.2);
+    const vy = -rand(0.7, 2.3);
+    const vx = rand(-0.32, 0.32);
+    const life = rand(120, 260);
+    const hue = rand(22, 48);
+    const sat = rand(85, 100);
+    const light = rand(54, 72);
+    const alpha = rand(0.16, 0.60);
+    embers.push({x,y,vx,vy,r,life,t:0,hue,sat,light,alpha,tw:rand(0.6,1.8)});
   }
 
-  renderBackground(dt, hype);
-  renderHUD(now, hype, remaining);
-  renderOrbit(dt, progress, hype, remaining);
+  function ensure(){ while(embers.length<MAX) spawn(); }
+  ensure();
 
-  // go live
-  if (remaining <= 0 && !wentLive){
-    wentLive = true;
+  function draw(){
+    if(!W||!H){ requestAnimationFrame(draw); return; }
+    ctx.clearRect(0,0,W,H);
 
-    triggerFullMoment();
-    spawnSparkBurst();
+    // subtle bottom heat tint
+    const g = ctx.createRadialGradient(W*0.5, H*0.95, 10, W*0.5, H*0.95, Math.max(W,H)*0.65);
+    g.addColorStop(0,"rgba(255,122,24,0.10)");
+    g.addColorStop(0.35,"rgba(255,176,0,0.05)");
+    g.addColorStop(1,"rgba(255,176,0,0)");
+    ctx.fillStyle=g;
+    ctx.fillRect(0,0,W,H);
 
-    liveOverlay.classList.add("on");
-    // keep orbit/sparks running, everything keeps looking alive
-    // optional: lock text
-    // headlineTitle.textContent = "WE’RE LIVE";
+    for(let i=embers.length-1;i>=0;i--){
+      const e=embers[i];
+      e.t++;
+      e.x += e.vx + Math.sin((e.t/18)*e.tw)*0.22;
+      e.y += e.vy;
+      e.vx *= 0.998;
+
+      const k = 1 - (e.t/e.life);
+      const a = Math.max(0, e.alpha*k);
+      const rr = e.r*(0.9+(1-k)*0.25);
+
+      ctx.beginPath();
+      ctx.fillStyle = `hsla(${e.hue},${e.sat}%,${e.light}%,${a})`;
+      ctx.arc(e.x,e.y,rr,0,Math.PI*2);
+      ctx.fill();
+
+      ctx.beginPath();
+      ctx.fillStyle = `hsla(${e.hue},${e.sat}%,${Math.min(92,e.light+18)}%,${a*0.55})`;
+      ctx.arc(e.x,e.y,rr*2.1,0,Math.PI*2);
+      ctx.fill();
+
+      if(e.t>e.life || e.y<-70 || e.x<-90 || e.x>W+90){
+        embers.splice(i,1);
+      }
+    }
+
+    ensure();
+    requestAnimationFrame(draw);
   }
-
-  requestAnimationFrame(loop);
-}
-requestAnimationFrame(loop);
+  draw();
 </script>
 </body>
 </html>
