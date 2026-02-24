@@ -1,370 +1,1059 @@
 <!doctype html>
 <html lang="en">
 <head>
-<meta charset="utf-8" />
-<meta name="viewport" content="width=device-width,height=device-height,initial-scale=1" />
-<title>Oddmeister • Corner Dock</title>
+<meta charset="utf-8"/>
+<meta name="viewport" content="width=device-width,height=device-height,initial-scale=1"/>
+<title>Oddmeister • The Great Forge</title>
+<link rel="preconnect" href="https://fonts.googleapis.com"/>
+<link href="https://fonts.googleapis.com/css2?family=Orbitron:wght@400;700;900&family=Cinzel:wght@400;700&display=swap" rel="stylesheet"/>
 <style>
-  :root{
-    --orange:#ff7a18;
-    --orange2:#ffb000;
-    --cream:#ffe9d2;
+/* ============================================================
+   THE GREAT FORGE — Oddmeister TV  Starting Soon
+   Palette: #ff4d00 Fire  |  #ffc800 Gold  |  #0a0a0c Obsidian
+   ============================================================ */
 
-    /* not-black base */
-    --bg1:#141833;
-    --bg2:#281536;
-    --bg3:#0f2f36;
+* { box-sizing: border-box; margin: 0; padding: 0; }
 
-    --dockBg: rgba(255,255,255,0.06);
-    --dockBorder: rgba(255,255,255,0.14);
-    --dockText: rgba(255,255,255,0.88);
-    --dockSub: rgba(255,233,210,0.70);
+html, body {
+  width: 100%; height: 100%;
+  overflow: hidden;
+  background: #0a0a0c;
+}
 
-    --dockRadius: 24px;
-  }
+.stage {
+  position: relative;
+  width: 100%; height: 100%;
+  display: flex; align-items: center; justify-content: center;
+  font-family: 'Orbitron', 'Courier New', monospace;
+}
 
-  html,body{
-    margin:0;
-    width:100%;
-    height:100%;
-    overflow:hidden;
-    font-family: system-ui, -apple-system, Segoe UI, Roboto, Helvetica, Arial, sans-serif;
-  }
+/* ---- Base background (heat haze filter applied to this div) ---- */
+.bg {
+  position: absolute; inset: 0;
+  background:
+    radial-gradient(ellipse 130% 50% at 50% 110%, rgba(255,77,0,0.14) 0%, transparent 52%),
+    radial-gradient(ellipse 60% 55% at  8% 52%,  rgba(255,50,0,0.05) 0%, transparent 55%),
+    linear-gradient(172deg, #110c0f 0%, #0a0a0c 46%, #0d0a06 100%);
+  filter: url(#haze);
+}
 
-  .stage{
-    position:relative;
-    width:100%;
-    height:100%;
-    background:
-      radial-gradient(1100px 850px at 18% 20%, rgba(255,122,24,0.16), transparent 62%),
-      radial-gradient(900px 700px at 82% 28%, rgba(255,176,0,0.10), transparent 62%),
-      radial-gradient(1200px 900px at 55% 85%, rgba(120,80,255,0.10), transparent 65%),
-      linear-gradient(135deg, var(--bg1), var(--bg2) 48%, var(--bg3));
-  }
+.stone-texture {
+  position: absolute; inset: 0;
+  background-image:
+    radial-gradient(circle at 22% 32%, rgba(255,77,0,0.030) 1px, transparent 1px),
+    radial-gradient(circle at 66% 70%, rgba(255,200,0,0.028) 1px, transparent 1px);
+  background-size: 54px 54px, 72px 72px;
+  opacity: 0.65;
+  pointer-events: none;
+}
 
-  /* Slow “fog” drift overlay (super subtle) */
-  .fog{
-    position:absolute; inset:-18%;
-    background:
-      radial-gradient(900px 700px at 25% 35%, rgba(255,122,24,0.12), transparent 65%),
-      radial-gradient(900px 700px at 70% 55%, rgba(255,176,0,0.08), transparent 66%),
-      radial-gradient(900px 700px at 55% 25%, rgba(120,80,255,0.10), transparent 70%);
-    filter: blur(22px);
-    opacity: 0.9;
-    animation: fogDrift 10s ease-in-out infinite alternate;
-    pointer-events:none;
-    mix-blend-mode: screen;
-  }
-  @keyframes fogDrift{
-    0%{ transform: translate(-18px, 12px) scale(1.02); }
-    100%{ transform: translate(18px, -14px) scale(1.06); }
-  }
+/* ---- Heat overlay layers — accumulate as phases progress ---- */
+/* Each fades in when setHeatLayers(n) is called with n >= layer index+1 */
+.heat-l1, .heat-l2, .heat-l3, .heat-l4 {
+  position: absolute; inset: 0;
+  pointer-events: none; z-index: 1;
+  opacity: 0;
+  transition: opacity 4.5s ease;
+  mix-blend-mode: screen;
+}
+.heat-l1 {
+  background:
+    radial-gradient(ellipse 145% 58% at 50% 112%, rgba(255,120,0,0.16), transparent 52%),
+    radial-gradient(ellipse 48% 38% at  9% 52%,  rgba(255,80,0,0.07),  transparent 55%);
+}
+.heat-l2 {
+  background:
+    radial-gradient(ellipse 155% 63% at 50% 114%, rgba(255,100,0,0.20), transparent 55%),
+    radial-gradient(ellipse 58% 48% at 92% 44%,  rgba(255,150,0,0.08), transparent 58%);
+}
+.heat-l3 {
+  background:
+    radial-gradient(ellipse 165% 68% at 50% 114%, rgba(255,80,0,0.25),  transparent 55%),
+    radial-gradient(ellipse 88% 52% at 50% 26%,  rgba(255,120,0,0.10), transparent 60%);
+}
+.heat-l4 {
+  background:
+    radial-gradient(ellipse 175% 74% at 50% 116%, rgba(255,55,0,0.31),  transparent 58%),
+    radial-gradient(ellipse 110% 62% at 50% 20%, rgba(255,100,0,0.13), transparent 65%);
+}
 
-  /* Embers across entire canvas (but light) */
-  #embers{
-    position:absolute; inset:0;
-    width:100%; height:100%;
-    pointer-events:none;
-    mix-blend-mode: screen;
-    opacity: 0.95;
-  }
+/* ---- Spark canvas ---- */
+#sparks {
+  position: absolute; inset: 0; width: 100%; height: 100%;
+  pointer-events: none; mix-blend-mode: screen; z-index: 2;
+}
 
-  /* Vignette keeps edges calm */
-  .vignette{
-    position:absolute; inset:0;
-    background: radial-gradient(1200px 900px at 50% 50%, transparent 52%, rgba(0,0,0,0.22) 80%, rgba(0,0,0,0.48) 100%);
-    pointer-events:none;
-  }
+/* ---- Ember pool glow at bottom ---- */
+.ember-pool {
+  position: absolute; bottom: 0; left: 0; right: 0; height: 250px;
+  background: radial-gradient(ellipse 55% 100% at 50% 100%, rgba(255,77,0,0.16), transparent 70%);
+  pointer-events: none; z-index: 1;
+  opacity: 0;
+  transition: opacity 4s ease;
+}
 
-  /* --- Corner Dock UI --- */
-  .dock{
-    position:absolute;
-    left: clamp(18px, 2.2vw, 44px);
-    bottom: clamp(18px, 2.2vw, 44px);
-    display:flex;
-    align-items:center;
-    gap: 16px;
-    padding: 14px 16px;
-    border-radius: var(--dockRadius);
-    background: var(--dockBg);
-    border: 1px solid var(--dockBorder);
-    box-shadow: 0 24px 90px rgba(0,0,0,0.38);
-    backdrop-filter: blur(12px);
-    transform: translateZ(0);
-  }
+/* ============================================================
+   EVENT BANNER — top-centre strip
+   ============================================================ */
+.event-banner {
+  position: absolute; top: 0; left: 0; right: 0;
+  display: flex; flex-direction: column; align-items: center;
+  padding: 20px 40px 16px;
+  z-index: 6; pointer-events: none;
+  opacity: 0;
+  background: linear-gradient(180deg, rgba(0,0,0,0.50) 0%, transparent 100%);
+}
+.event-banner.show { animation: bannerShow 4.4s ease forwards; }
 
-  .badge{
-    width: 56px;
-    height: 56px;
-    border-radius: 16px;
-    display:grid;
-    place-items:center;
-    position:relative;
-    overflow:hidden;
-  }
+@keyframes bannerShow {
+  0%   { opacity: 0; transform: translateY(-10px); }
+  10%  { opacity: 1; transform: translateY(0); }
+  72%  { opacity: 1; transform: translateY(0); }
+  100% { opacity: 0; transform: translateY(-8px); }
+}
 
-  /* Warm accent behind badge */
-  .badge:before{
-    content:"";
-    position:absolute; inset:-60%;
-    background:
-      radial-gradient(circle at 35% 40%, rgba(255,122,24,0.45), transparent 62%),
-      radial-gradient(circle at 70% 70%, rgba(255,176,0,0.22), transparent 65%);
-    filter: blur(10px);
-    opacity: 0.95;
-    animation: badgeDrift 5.8s ease-in-out infinite alternate;
-  }
-  @keyframes badgeDrift{
-    0%{ transform: translate(-10px, 8px) scale(1.02); }
-    100%{ transform: translate(10px, -8px) scale(1.08); }
-  }
+.event-eyebrow {
+  font-size: 9px; letter-spacing: 0.65em;
+  color: rgba(255,150,60,0.55); text-transform: uppercase;
+  margin-bottom: 6px;
+}
+.event-line {
+  display: flex; align-items: center; gap: 14px;
+}
+.event-tick {
+  width: 1px; height: 18px;
+  background: rgba(255,200,0,0.50); flex-shrink: 0;
+}
+.event-msg {
+  font-size: 13px; font-weight: 900; letter-spacing: 0.30em;
+  color: rgba(255,200,0,0.92); text-transform: uppercase;
+  text-shadow: 0 0 22px rgba(255,200,0,0.50);
+}
 
-  .smiley{
-    width: 44px;
-    height: 44px;
-    z-index:2;
-    filter: drop-shadow(0 10px 22px rgba(0,0,0,0.35));
-  }
+/* ============================================================
+   MAIN 2-COLUMN GRID
+   ============================================================ */
+.grid {
+  position: relative; z-index: 3;
+  width: 100%; height: 100%;
+  display: grid;
+  grid-template-columns: 400px 1fr;
+  grid-template-rows: 1fr;
+  align-items: center;
+  padding: 52px 72px 52px 64px;
+  gap: 64px;
+}
 
-  .text{
-    display:flex;
-    flex-direction:column;
-    gap: 2px;
-    min-width: 240px;
-  }
+/* ============================================================
+   SMILEY CHAMBER  (left column)
+   ============================================================ */
+.chamber {
+  height: 82%;
+  position: relative;
+}
 
-  .title{
-    font-weight: 950;
-    letter-spacing: 0.02em;
-    color: var(--dockText);
-    font-size: 16px;
-    line-height: 1.2;
-    display:flex;
-    align-items:center;
-    gap: 10px;
-  }
+.chamber-glass {
+  width: 100%; height: 100%;
+  background: linear-gradient(180deg,
+    rgba(255,120,30,0.052) 0%,
+    rgba(255, 60, 0,0.026) 50%,
+    rgba(255,120, 0,0.062) 100%);
+  backdrop-filter: blur(18px) saturate(1.25) brightness(1.05);
+  -webkit-backdrop-filter: blur(18px) saturate(1.25) brightness(1.05);
+  border:        1px solid rgba(255,130,40,0.20);
+  border-top:    1px solid rgba(255,210,100,0.22);
+  border-bottom: 1px solid rgba(255, 77,  0,0.15);
+  border-radius: 22px;
+  box-shadow:
+    inset 0  0 60px rgba(255, 77, 0,0.055),
+    inset 0  1px 0   rgba(255,210,100,0.12),
+    inset 0 -1px 0   rgba(255, 77,  0,0.13),
+    0  0  72px rgba(255, 77,  0,0.09),
+    0  0   2px rgba(255, 77,  0,0.16),
+    0 40px 80px rgba(0,0,0,0.74),
+    0 80px 120px rgba(0,0,0,0.48);
+  display: flex; flex-direction: column;
+  align-items: center; justify-content: center;
+  gap: 32px;
+  position: relative; overflow: hidden;
+  transition: border-color 3s ease, box-shadow 3s ease;
+}
 
-  .dot{
-    width: 8px; height: 8px;
-    border-radius: 999px;
-    background: var(--orange);
-    box-shadow: 0 0 14px rgba(255,122,24,0.65);
-  }
+/* Inner inset border for depth */
+.chamber-glass::before {
+  content: '';
+  position: absolute; inset: 12px;
+  border: 1px solid rgba(255,120,0,0.07);
+  border-radius: 14px; pointer-events: none;
+}
+/* Top-edge glint */
+.chamber-glass::after {
+  content: '';
+  position: absolute; top: 0; left: 10%; right: 10%; height: 1px;
+  background: linear-gradient(90deg, transparent, rgba(255,210,100,0.34), transparent);
+}
 
-  .sub{
-    color: var(--dockSub);
-    font-weight: 800;
-    letter-spacing: 0.10em;
-    text-transform: uppercase;
-    font-size: 12px;
-  }
+/* Corner brackets */
+.ch-tl, .ch-tr, .ch-bl, .ch-br {
+  position: absolute; width: 22px; height: 22px;
+  border-style: solid; pointer-events: none;
+  transition: border-color 3s ease;
+}
+.ch-tl { top:10px;    left:10px;  border-color:rgba(255,200,0,0.40); border-width:2px 0 0 2px; }
+.ch-tr { top:10px;    right:10px; border-color:rgba(255,200,0,0.24); border-width:2px 2px 0 0; }
+.ch-bl { bottom:10px; left:10px;  border-color:rgba(255,100,20,0.26);border-width:0 0 2px 2px; }
+.ch-br { bottom:10px; right:10px; border-color:rgba(255,200,0,0.40); border-width:0 2px 2px 0; }
 
-  .timer{
-    margin-left: 10px;
-    display:flex;
-    flex-direction:column;
-    align-items:flex-end;
-    gap: 2px;
-    min-width: 110px;
-  }
+/* Vertical heat gauge — fills upward as time elapses */
+.heat-gauge-track {
+  position: absolute; left: 16px; top: 14%; bottom: 14%;
+  width: 3px;
+  background: rgba(255,255,255,0.055);
+  border-radius: 2px;
+}
+.heat-gauge-fill {
+  position: absolute; bottom: 0; left: 0; right: 0;
+  background: linear-gradient(0deg, #ff4d00, #ffc800);
+  border-radius: 2px;
+  height: 0%;
+  transition: height 1s linear, background 4s ease;
+  box-shadow: 0 0 8px rgba(255,150,0,0.55);
+}
 
-  .time{
-    font-variant-numeric: tabular-nums;
-    font-size: 26px;
-    font-weight: 950;
-    color: rgba(255,255,255,0.92);
-    letter-spacing: 0.02em;
-    line-height: 1.05;
-  }
-  .state{
-    font-size: 12px;
-    font-weight: 850;
-    color: rgba(255,233,210,0.72);
-    letter-spacing: 0.12em;
-    text-transform: uppercase;
-  }
+/* Smiley */
+.smiley-wrap {
+  position: relative;
+  animation: floatSmiley 4.5s ease-in-out infinite;
+}
+@keyframes floatSmiley {
+  0%, 100% { transform: translateY(0); }
+  50%       { transform: translateY(-16px); }
+}
 
-  /* Last 10 seconds: warm wash + dock pulse */
-  .heat{
-    position:absolute; inset:0;
-    background: radial-gradient(900px 700px at 30% 85%, rgba(255,122,24,0.18), transparent 62%);
-    opacity: 0;
-    pointer-events:none;
-    mix-blend-mode: screen;
-  }
+.smiley-img {
+  width: 180px; height: 180px;
+  object-fit: contain; display: block;
+  animation: glowNormal 2.5s ease-in-out infinite;
+  transition: filter 0s; /* animation handles this */
+}
+.smiley-fallback {
+  display: none; font-size: 130px; line-height: 1;
+  animation: glowNormal 2.5s ease-in-out infinite;
+}
+.smiley-img.img-err                   { display: none; }
+.smiley-img.img-err ~ .smiley-fallback { display: block; }
 
-  .last10 .heat{
-    opacity: 1;
-    animation: heatPulse 0.9s ease-in-out infinite;
+@keyframes glowNormal {
+  0%, 100% {
+    filter: drop-shadow(0 0 16px rgba(255, 77,0,0.82)) drop-shadow(0 0 5px rgba(255,77,0,0.62));
   }
-  @keyframes heatPulse{
-    0%{ opacity: .10; transform: scale(1); }
-    50%{ opacity: .26; transform: scale(1.02); }
-    100%{ opacity: .10; transform: scale(1); }
+  50% {
+    filter:
+      drop-shadow(0 0 48px rgba(255,160,0,1.00))
+      drop-shadow(0 0 18px rgba(255,200,0,0.88))
+      drop-shadow(0 0 96px rgba(255, 77,0,0.40));
   }
+}
 
-  .last10 .dock{
-    animation: dockPulse 0.9s ease-in-out infinite;
-    border-color: rgba(255,122,24,0.32);
-  }
-  @keyframes dockPulse{
-    0%{ transform: translateZ(0) scale(1); }
-    50%{ transform: translateZ(0) scale(1.02); }
-    100%{ transform: translateZ(0) scale(1); }
-  }
+/* Phase-driven glow escalation on smiley */
+.phase-heating .smiley-img, .phase-heating .smiley-fallback {
+  animation: glowHeating 2.2s ease-in-out infinite;
+}
+@keyframes glowHeating {
+  0%,100% { filter: drop-shadow(0 0 22px rgba(255,100,0,0.90)) drop-shadow(0 0 7px rgba(255,120,0,0.72)); }
+  50%      { filter: drop-shadow(0 0 58px rgba(255,180,0,1.00)) drop-shadow(0 0 24px rgba(255,220,0,0.90)) drop-shadow(0 0 110px rgba(255,100,0,0.45)); }
+}
+.phase-hot .smiley-img, .phase-hot .smiley-fallback {
+  animation: glowHot 2.0s ease-in-out infinite;
+}
+@keyframes glowHot {
+  0%,100% { filter: drop-shadow(0 0 28px rgba(255,140,0,0.95)) drop-shadow(0 0 9px rgba(255,180,0,0.80)); }
+  50%      { filter: drop-shadow(0 0 70px rgba(255,220,0,1.00)) drop-shadow(0 0 30px rgba(255,240,100,0.95)) drop-shadow(0 0 130px rgba(255,140,0,0.50)); }
+}
+.phase-overload .smiley-img, .phase-overload .smiley-fallback {
+  animation: glowOverload 1.6s ease-in-out infinite;
+}
+@keyframes glowOverload {
+  0%,100% { filter: drop-shadow(0 0 36px rgba(255,180,0,0.98)) drop-shadow(0 0 12px rgba(255,220,0,0.88)); }
+  50%      { filter: drop-shadow(0 0 90px rgba(255,240,80,1.00)) drop-shadow(0 0 38px rgba(255,255,160,0.98)) drop-shadow(0 0 160px rgba(255,180,0,0.55)); }
+}
+.critical .smiley-img, .critical .smiley-fallback {
+  animation: glowCritical 0.75s ease-in-out infinite;
+}
+@keyframes glowCritical {
+  0%,100% { filter: drop-shadow(0 0 24px rgba(255,0,0,0.95)) drop-shadow(0 0 8px rgba(255,40,40,0.80)); }
+  50%      { filter: drop-shadow(0 0 72px rgba(255,100,100,1.00)) drop-shadow(0 0 28px rgba(255,230,230,0.92)) drop-shadow(0 0 120px rgba(255,0,0,0.52)); }
+}
 
-  /* Make sure it still looks good if the Browser Source is not exactly 1920x1080 */
-  .safe{
-    position:absolute; inset:0;
-    pointer-events:none;
-  }
+/* Chamber bottom status strip */
+.chamber-status {
+  display: flex; flex-direction: column; align-items: center; gap: 9px;
+  width: 100%; padding: 0 26px;
+}
+.chamber-phase-label {
+  font-size: 9px; letter-spacing: 0.55em;
+  color: rgba(255,150,60,0.48); text-transform: uppercase;
+  transition: color 3s ease;
+}
+.chamber-prog-track {
+  width: 100%; height: 2px;
+  background: rgba(255,255,255,0.07); border-radius: 1px; overflow: hidden;
+}
+.chamber-prog-fill {
+  height: 100%; width: 100%;
+  background: linear-gradient(90deg, #ff4d00, #ffc800);
+  box-shadow: 0 0 6px rgba(255,200,0,0.35);
+  transition: width 1s linear, background 3s ease;
+}
+
+/* ============================================================
+   HUD COLUMN  (right column)
+   ============================================================ */
+.hud-col {
+  display: flex; flex-direction: column;
+  align-items: center; gap: 20px;
+}
+
+.hud-brand {
+  font-family: 'Cinzel', 'Georgia', serif;
+  font-size: 15px; font-weight: 700;
+  letter-spacing: 0.55em;
+  color: rgba(255,200,0,0.58);
+  text-transform: uppercase;
+  text-shadow: 0 0 28px rgba(255,200,0,0.28);
+  transition: color 3s ease, text-shadow 3s ease;
+}
+
+.hud-frame {
+  position: relative;
+  padding: 44px 64px 38px;
+  max-width: 680px; width: 100%;
+  background: linear-gradient(180deg,
+    rgba(16,10,8,0.94) 0%,
+    rgba(10,10,12,0.96) 50%,
+    rgba(14,8,6,0.94) 100%);
+  border:        2px solid rgba(255,100,20,0.28);
+  border-top:    2px solid rgba(255,210,80,0.22);
+  border-bottom: 2px solid rgba(255,77,0,0.20);
+  border-radius: 10px;
+  box-shadow:
+    inset 0 0 90px rgba(255,50,0,0.065),
+    inset 0  2px 0 rgba(255,210,100,0.065),
+    inset 0 -2px 0 rgba(255,77,0,0.100),
+    0  0 110px rgba(255,77,0,0.18),
+    0  0   2px rgba(255,77,0,0.14),
+    0 70px 130px rgba(0,0,0,0.88);
+  display: flex; flex-direction: column;
+  align-items: center; gap: 14px;
+  text-align: center;
+  transition: border-color 3s ease, box-shadow 3s ease;
+}
+
+/* HUD frame corners */
+.c-tl { position:absolute; top:10px;    left:10px;    width:28px; height:28px; border-top:2px solid rgba(255,200,0,0.46); border-left:2px solid rgba(255,200,0,0.46); transition: border-color 3s ease; }
+.c-tr { position:absolute; top:10px;    right:10px;   width:28px; height:28px; border-top:2px solid rgba(255,200,0,0.28); border-right:2px solid rgba(255,200,0,0.28); transition: border-color 3s ease; }
+.c-bl { position:absolute; bottom:10px; left:10px;    width:28px; height:28px; border-bottom:2px solid rgba(255,100,20,0.28); border-left:2px solid rgba(255,100,20,0.28); transition: border-color 3s ease; }
+.c-br { position:absolute; bottom:10px; right:10px;   width:28px; height:28px; border-bottom:2px solid rgba(255,200,0,0.46); border-right:2px solid rgba(255,200,0,0.46); transition: border-color 3s ease; }
+
+.hud-label {
+  font-size: 10px; letter-spacing: 0.60em;
+  color: rgba(255,150,60,0.50); text-transform: uppercase;
+  transition: color 2.5s ease;
+}
+
+.divider {
+  width: 270px; height: 1px;
+  background: linear-gradient(90deg, transparent, rgba(255,120,0,0.45), transparent);
+  transition: background 3s ease;
+}
+
+.timer-display {
+  font-size: clamp(76px, 9.0vw, 118px);
+  font-weight: 900; letter-spacing: 0.10em;
+  font-variant-numeric: tabular-nums;
+  color: #ffc800; line-height: 1;
+  text-shadow:
+    0 0 22px rgba(255,200,0,0.72),
+    0 0 62px rgba(255,77,0,0.36),
+    0  3px 0 rgba(0,0,0,0.85);
+  transition: color 0.45s ease, text-shadow 0.45s ease;
+}
+
+/* HUD progress bar (time remaining) */
+.hud-prog-track {
+  width: 100%; height: 3px;
+  background: rgba(255,255,255,0.07);
+  border-radius: 2px; overflow: hidden;
+}
+.hud-prog-fill {
+  height: 100%; width: 100%;
+  background: linear-gradient(90deg, #ff4d00 0%, #ff9000 50%, #ffc800 100%);
+  border-radius: 2px;
+  box-shadow: 0 0 8px rgba(255,200,0,0.35);
+  transition: width 1s linear;
+}
+
+.timer-status {
+  font-size: 11px; letter-spacing: 0.50em;
+  color: rgba(255,233,210,0.42); text-transform: uppercase;
+  transition: color 2s ease;
+}
+
+.hud-sub {
+  font-family: 'Cinzel', 'Georgia', serif;
+  font-size: 12px; font-weight: 400; letter-spacing: 0.36em;
+  color: rgba(255,200,0,0.36); text-transform: uppercase;
+  transition: color 3s ease;
+}
+
+/* ============================================================
+   PHASE-DRIVEN OVERRIDES
+   All transitions defined on the base elements above.
+   ============================================================ */
+
+/* — Phase: warming — */
+.phase-warming .chamber-glass {
+  border-color: rgba(255,145,52,0.25);
+  border-top-color: rgba(255,220,110,0.27);
+}
+.phase-warming .hud-brand { color: rgba(255,210,0,0.68); text-shadow: 0 0 32px rgba(255,200,0,0.34); }
+.phase-warming .hud-frame {
+  box-shadow: inset 0 0 90px rgba(255,50,0,0.08), 0 0 120px rgba(255,100,0,0.22), 0 0 2px rgba(255,100,0,0.16), 0 70px 130px rgba(0,0,0,0.88);
+}
+.phase-warming .divider { background: linear-gradient(90deg, transparent, rgba(255,145,0,0.54), transparent); }
+
+/* — Phase: heating — */
+.phase-heating .chamber-glass {
+  border-color: rgba(255,162,62,0.32);
+  border-top-color: rgba(255,232,122,0.30);
+  box-shadow:
+    inset 0 0 70px rgba(255,100,0,0.10),
+    inset 0 1px 0 rgba(255,220,100,0.15),
+    0 0 90px rgba(255,110,0,0.17),
+    0 0 2px rgba(255,110,0,0.22),
+    0 40px 80px rgba(0,0,0,0.68);
+}
+.phase-heating .hud-brand { color: rgba(255,218,30,0.75); text-shadow: 0 0 34px rgba(255,210,0,0.40); }
+.phase-heating .hud-frame {
+  box-shadow: inset 0 0 95px rgba(255,60,0,0.10), 0 0 135px rgba(255,120,0,0.27), 0 0 2px rgba(255,120,0,0.18), 0 70px 130px rgba(0,0,0,0.88);
+}
+.phase-heating .divider { background: linear-gradient(90deg, transparent, rgba(255,165,0,0.62), transparent); }
+.phase-heating .ch-tl, .phase-heating .ch-br { border-color: rgba(255,210,0,0.52); }
+
+/* — Phase: hot — */
+.phase-hot .chamber-glass {
+  border-color: rgba(255,182,72,0.38);
+  border-top-color: rgba(255,242,132,0.36);
+  box-shadow:
+    inset 0 0 80px rgba(255,120,0,0.13),
+    inset 0 1px 0 rgba(255,232,100,0.18),
+    0 0 110px rgba(255,125,0,0.23),
+    0 0 2px rgba(255,125,0,0.28),
+    0 40px 80px rgba(0,0,0,0.64);
+}
+.phase-hot .hud-brand { color: rgba(255,226,50,0.82); text-shadow: 0 0 36px rgba(255,220,0,0.48); }
+.phase-hot .hud-frame {
+  border-color: rgba(255,142,32,0.38);
+  border-top-color: rgba(255,222,82,0.30);
+  box-shadow: inset 0 0 105px rgba(255,80,0,0.12), 0 0 155px rgba(255,145,0,0.32), 0 0 2px rgba(255,145,0,0.22), 0 70px 130px rgba(0,0,0,0.88);
+}
+.phase-hot .timer-display {
+  color: #ffe060;
+  text-shadow: 0 0 26px rgba(255,220,0,0.82), 0 0 72px rgba(255,140,0,0.44), 0 3px 0 rgba(0,0,0,0.85);
+}
+.phase-hot .divider { background: linear-gradient(90deg, transparent, rgba(255,190,0,0.70), transparent); }
+.phase-hot .c-tl, .phase-hot .c-br { border-color: rgba(255,225,0,0.62); }
+
+/* — Phase: overload — */
+.phase-overload .chamber-glass {
+  box-shadow:
+    inset 0 0 100px rgba(255,140,0,0.17),
+    inset 0 1px 0 rgba(255,244,104,0.22),
+    0 0 130px rgba(255,145,0,0.30),
+    0 0 2px rgba(255,145,0,0.36),
+    0 40px 80px rgba(0,0,0,0.58);
+}
+.phase-overload .hud-brand { color: rgba(255,234,80,0.92); text-shadow: 0 0 40px rgba(255,230,0,0.58); }
+.phase-overload .hud-frame {
+  border-color: rgba(255,162,42,0.46);
+  border-top-color: rgba(255,232,92,0.38);
+  box-shadow: inset 0 0 110px rgba(255,100,0,0.15), 0 0 170px rgba(255,162,0,0.38), 0 0 2px rgba(255,162,0,0.28), 0 70px 130px rgba(0,0,0,0.88);
+}
+.phase-overload .timer-display {
+  color: #ffdc4a;
+  text-shadow: 0 0 30px rgba(255,225,0,0.90), 0 0 80px rgba(255,150,0,0.52), 0 3px 0 rgba(0,0,0,0.85);
+}
+.phase-overload .divider { background: linear-gradient(90deg, transparent, rgba(255,210,0,0.80), transparent); }
+.phase-overload .c-tl, .phase-overload .c-br { border-color: rgba(255,242,0,0.72); }
+.phase-overload .hud-sub { color: rgba(255,220,80,0.58); }
+
+/* ============================================================
+   CRITICAL STATE  (<=10 s)
+   ============================================================ */
+.critical .timer-display {
+  color: #ff2200;
+  text-shadow: 0 0 24px rgba(255,0,0,0.95), 0 0 72px rgba(255,50,0,0.52), 0 3px 0 rgba(0,0,0,0.85);
+  animation: critFlicker 0.65s ease-in-out infinite;
+}
+@keyframes critFlicker {
+  0%,100% { opacity: 1.00; }
+  46%     { opacity: 1.00; }
+  50%     { opacity: 0.80; }
+  54%     { opacity: 1.00; }
+}
+
+.critical .hud-frame {
+  animation: cameraShake 0.22s ease-in-out infinite;
+  border-color:        rgba(255,  0,0,0.52);
+  border-top-color:    rgba(255,100,100,0.38);
+  border-bottom-color: rgba(255,  0,0,0.40);
+  box-shadow:
+    inset 0 0 90px rgba(255,0,0,0.13),
+    0  0 125px rgba(255,0,0,0.30),
+    0  0   2px rgba(255,0,0,0.22),
+    0 70px 130px rgba(0,0,0,0.88);
+}
+@keyframes cameraShake {
+  0%,100% { transform: translate(0,   0)    rotate(0deg);    }
+  10%     { transform: translate(-3px, 1px)  rotate(-0.14deg); }
+  20%     { transform: translate( 2px,-2px)  rotate( 0.11deg); }
+  30%     { transform: translate(-2px, 2px)  rotate( 0.13deg); }
+  40%     { transform: translate( 3px,-1px)  rotate(-0.09deg); }
+  50%     { transform: translate(-1px, 3px)  rotate( 0.14deg); }
+  60%     { transform: translate( 2px, 1px)  rotate(-0.11deg); }
+  70%     { transform: translate(-3px,-2px)  rotate( 0.09deg); }
+  80%     { transform: translate( 1px, 2px)  rotate(-0.13deg); }
+  90%     { transform: translate(-2px,-1px)  rotate( 0.11deg); }
+}
+
+.critical .c-tl, .critical .c-br {
+  border-color: rgba(255,0,0,0.72);
+  animation: cornerPulse 0.65s ease-in-out infinite;
+}
+@keyframes cornerPulse {
+  0%,100% { opacity: 0.70; }
+  50%      { opacity: 1.00; }
+}
+
+/* ============================================================
+   IGNITION SEQUENCE  (t = 0)
+   ============================================================ */
+.ignition-blast {
+  position: absolute; inset: 0; pointer-events: none; z-index: 9;
+  background: radial-gradient(circle at 50% 50%,
+    rgba(255,255,245,1.0)  0%,
+    rgba(255,220, 80,0.95) 10%,
+    rgba(255,100,  0,0.76) 27%,
+    rgba(255, 77,  0,0.36) 50%,
+    transparent            68%);
+  transform: scale(0); opacity: 0;
+}
+.ignited .ignition-blast { animation: blastExpand 2.0s ease-out forwards; }
+@keyframes blastExpand {
+  0%   { transform: scale(0.0); opacity: 1.00; }
+  12%  { transform: scale(0.7); opacity: 1.00; }
+  38%  { transform: scale(2.2); opacity: 0.78; }
+  68%  { transform: scale(3.6); opacity: 0.22; }
+  100% { transform: scale(4.8); opacity: 0.00; }
+}
+
+.ignited .grid { animation: gridFadeOut 0.40s ease-in forwards; }
+@keyframes gridFadeOut { to { opacity: 0; pointer-events: none; } }
+
+.live-reveal {
+  position: absolute; inset: 0;
+  display: flex; flex-direction: column;
+  align-items: center; justify-content: center;
+  gap: 32px; z-index: 8; pointer-events: none; opacity: 0;
+}
+.ignited .live-reveal {
+  animation: liveReveal 0.65s cubic-bezier(0.34,1.56,0.64,1) 0.70s forwards;
+}
+@keyframes liveReveal {
+  from { opacity: 0; transform: scale(0.55) translateY(24px); }
+  to   { opacity: 1; transform: scale(1.00) translateY(0);    }
+}
+
+.live-text {
+  font-family: 'Orbitron', 'Courier New', monospace;
+  font-size: clamp(96px, 13vw, 172px);
+  font-weight: 900; letter-spacing: 0.08em; line-height: 1;
+  color: #ffc800;
+  text-shadow:
+    0 0  32px rgba(255,200,  0,1.00),
+    0 0  90px rgba(255,150,  0,0.86),
+    0 0 182px rgba(255, 77,  0,0.50),
+    0  4px 0  rgba(0,0,0,0.85);
+  animation: liveGlow 1.3s ease-in-out infinite 1.35s;
+}
+@keyframes liveGlow {
+  0%,100% { text-shadow: 0 0 32px rgba(255,200,0,1.00), 0 0 90px rgba(255,150,0,0.86), 0 0 182px rgba(255,77,0,0.50), 0 4px 0 rgba(0,0,0,0.85); }
+  50%      { text-shadow: 0 0 56px rgba(255,235,100,1.00), 0 0 134px rgba(255,200,0,1.00), 0 0 244px rgba(255,100,0,0.72), 0 4px 0 rgba(0,0,0,0.85); }
+}
+
+.live-sub-row { display: flex; align-items: center; gap: 16px; }
+.live-dot-big {
+  width: 14px; height: 14px; border-radius: 50%;
+  background: #ff4d00; box-shadow: 0 0 20px rgba(255,77,0,0.9);
+  animation: liveDotPulse 0.85s ease-in-out infinite 1.35s; flex-shrink: 0;
+}
+@keyframes liveDotPulse {
+  0%,100% { transform: scale(1.0); box-shadow: 0 0 20px rgba(255,77,0,0.9); }
+  50%      { transform: scale(1.5); box-shadow: 0 0 36px rgba(255,120,0,1.0), 0 0 70px rgba(255,77,0,0.5); }
+}
+.live-sub {
+  font-family: 'Cinzel', 'Georgia', serif;
+  font-size: 22px; font-weight: 700; letter-spacing: 0.55em;
+  color: rgba(255,233,210,0.82); text-transform: uppercase;
+  text-shadow: 0 0 30px rgba(255,200,0,0.44);
+}
+
+/* ============================================================
+   VIGNETTE + SCANLINES
+   ============================================================ */
+.vignette {
+  position: absolute; inset: 0;
+  background: radial-gradient(ellipse 88% 88% at 50% 50%,
+    transparent 40%, rgba(0,0,0,0.50) 74%, rgba(0,0,0,0.88) 100%);
+  pointer-events: none; z-index: 4;
+}
+.scanlines {
+  position: absolute; inset: 0;
+  background-image: repeating-linear-gradient(
+    0deg, transparent, transparent 3px,
+    rgba(0,0,0,0.022) 3px, rgba(0,0,0,0.022) 4px);
+  pointer-events: none; z-index: 5;
+}
 </style>
 </head>
 <body>
-  <div class="stage" id="root">
-    <div class="fog"></div>
-    <canvas id="embers"></canvas>
-    <div class="vignette"></div>
-    <div class="heat"></div>
 
-    <div class="dock">
-      <div class="badge">
-        <img class="smiley" src="assets/smiley.png" alt="Smiley"/>
-      </div>
+<!-- SVG heat-haze filter — zero-size, off-screen -->
+<svg width="0" height="0" style="position:absolute;overflow:hidden" aria-hidden="true">
+  <defs>
+    <filter id="haze" x="-5%" y="-5%" width="110%" height="110%">
+      <feTurbulence type="turbulence" baseFrequency="0.010 0.007"
+                    numOctaves="2" seed="4" result="noise">
+        <animate attributeName="baseFrequency"
+                 values="0.010 0.007;0.013 0.009;0.011 0.008;0.010 0.007"
+                 dur="10s" repeatCount="indefinite"/>
+      </feTurbulence>
+      <feDisplacementMap in="SourceGraphic" in2="noise" scale="8"
+                         xChannelSelector="R" yChannelSelector="G"/>
+    </filter>
+  </defs>
+</svg>
 
-      <div class="text">
-        <div class="title"><span class="dot"></span> Oddmeister • Starting Soon</div>
-        <div class="sub">loading vibes…</div>
-      </div>
+<div class="stage" id="root">
 
-      <div class="timer">
-        <div class="time" id="time">05:00</div>
-        <div class="state" id="state">warming up</div>
+  <div class="bg"></div>
+  <div class="stone-texture"></div>
+
+  <!-- Phase heat layers -->
+  <div class="heat-l1" id="hl1"></div>
+  <div class="heat-l2" id="hl2"></div>
+  <div class="heat-l3" id="hl3"></div>
+  <div class="heat-l4" id="hl4"></div>
+
+  <canvas id="sparks"></canvas>
+  <div class="ember-pool" id="ember-pool"></div>
+
+  <!-- Event banner -->
+  <div class="event-banner" id="event-banner">
+    <div class="event-eyebrow" id="event-eyebrow">FORGE STATUS</div>
+    <div class="event-line">
+      <div class="event-tick"></div>
+      <div class="event-msg" id="event-msg">Initialising Systems</div>
+      <div class="event-tick"></div>
+    </div>
+  </div>
+
+  <!-- 2-column grid -->
+  <div class="grid">
+
+    <!-- ── Left: Smiley Chamber ── -->
+    <div class="chamber">
+      <div class="chamber-glass">
+        <span class="ch-tl"></span><span class="ch-tr"></span>
+        <span class="ch-bl"></span><span class="ch-br"></span>
+
+        <div class="heat-gauge-track">
+          <div class="heat-gauge-fill" id="heat-gauge"></div>
+        </div>
+
+        <div class="smiley-wrap">
+          <img class="smiley-img" id="smiley" src="assets/Smiley.png" alt="Smiley"
+               onerror="this.classList.add('img-err')"/>
+          <span class="smiley-fallback">😊</span>
+        </div>
+
+        <div class="chamber-status">
+          <div class="chamber-phase-label" id="chamber-label">Cold — Initialising</div>
+          <div class="chamber-prog-track">
+            <div class="chamber-prog-fill" id="chamber-prog"></div>
+          </div>
+        </div>
       </div>
     </div>
 
-    <div class="safe"></div>
+    <!-- ── Right: HUD Column ── -->
+    <div class="hud-col">
+      <div class="hud-brand">Oddmeister TV</div>
+
+      <div class="hud-frame" id="hud-frame">
+        <span class="c-tl"></span><span class="c-tr"></span>
+        <span class="c-bl"></span><span class="c-br"></span>
+
+        <div class="hud-label" id="hud-label">Stream Starting In</div>
+        <div class="divider"></div>
+        <div class="timer-display" id="time">05:00</div>
+        <div class="divider"></div>
+        <div class="hud-prog-track">
+          <div class="hud-prog-fill" id="hud-prog"></div>
+        </div>
+        <div class="timer-status" id="state">Initialising</div>
+      </div>
+
+      <div class="hud-sub" id="hud-sub">Stand By</div>
+    </div>
+
+  </div><!-- /grid -->
+
+  <!-- Ignition elements -->
+  <div class="ignition-blast"></div>
+  <div class="live-reveal">
+    <div class="live-text">LET'S GO!</div>
+    <div class="live-sub-row">
+      <span class="live-dot-big"></span>
+      <div class="live-sub">Stream Is Live</div>
+    </div>
   </div>
 
+  <div class="vignette"></div>
+  <div class="scanlines"></div>
+
+</div><!-- /stage -->
+
 <script>
-  // -------- Countdown --------
-  const root = document.getElementById("root");
-  const timeEl = document.getElementById("time");
-  const stateEl = document.getElementById("state");
+/* ==================================================================
+   CONFIGURATION
+   ================================================================== */
+const TOTAL_SECONDS = 5 * 60; // ← change to 20 for quick testing
 
-  let totalStart = 5 * 60; // change me
-  let total = totalStart;
+/* ==================================================================
+   DOM REFS
+   ================================================================== */
+const root           = document.getElementById('root');
+const timeEl         = document.getElementById('time');
+const stateEl        = document.getElementById('state');
+const hudLabelEl     = document.getElementById('hud-label');
+const hudSubEl       = document.getElementById('hud-sub');
+const chamberLabelEl = document.getElementById('chamber-label');
+const hudProgEl      = document.getElementById('hud-prog');
+const chamberProgEl  = document.getElementById('chamber-prog');
+const heatGaugeEl    = document.getElementById('heat-gauge');
+const emberPoolEl    = document.getElementById('ember-pool');
+const eventBannerEl  = document.getElementById('event-banner');
+const eventEyeEl     = document.getElementById('event-eyebrow');
+const eventMsgEl     = document.getElementById('event-msg');
+const smileyEl       = document.getElementById('smiley');
+const heatLayers     = ['hl1','hl2','hl3','hl4'].map(id => document.getElementById(id));
 
-  const fmt = (s) => {
-    const m = Math.floor(s/60);
-    const r = s%60;
-    return String(m).padStart(2,"0") + ":" + String(r).padStart(2,"0");
-  };
+/* ==================================================================
+   SPARK SYSTEM STATE  (adjusted per phase)
+   ================================================================== */
+let sparkMax      = 160;   // current particle cap
+let phaseSpeedMul = 0.90;  // base simulation speed
+let burstMode     = false;
 
-  function tick(){
-    timeEl.textContent = fmt(total);
+/* ==================================================================
+   PHASE MANAGEMENT
+   ================================================================== */
+const ALL_PHASES = ['phase-cold','phase-warming','phase-heating','phase-hot','phase-overload'];
 
-    if (total <= 10){
-      root.classList.add("last10");
-      stateEl.textContent = "lock in…";
-    } else {
-      root.classList.remove("last10");
-      stateEl.textContent = "warming up";
+function setPhase(name, cfg) {
+  ALL_PHASES.forEach(p => root.classList.remove(p));
+  root.classList.add('phase-' + name);
+  if (cfg) { sparkMax = cfg.max; phaseSpeedMul = cfg.speed; }
+}
+
+function setHeatLayers(n) {
+  heatLayers.forEach((el, i) => { el.style.opacity = i < n ? '1' : '0'; });
+  emberPoolEl.style.opacity = String(Math.min(0.95, 0.15 + n * 0.20));
+}
+
+let _bannerTimer = null;
+function showBanner(eyebrow, msg, ms = 4400) {
+  clearTimeout(_bannerTimer);
+  eventEyeEl.textContent = eyebrow;
+  eventMsgEl.textContent = msg;
+  eventBannerEl.classList.remove('show');
+  void eventBannerEl.offsetWidth; // force reflow to restart animation
+  eventBannerEl.classList.add('show');
+  _bannerTimer = setTimeout(() => eventBannerEl.classList.remove('show'), ms);
+}
+
+function swapSmiley(src) {
+  if (!smileyEl.classList.contains('img-err')) smileyEl.src = src;
+}
+
+/* ==================================================================
+   TIMELINE  — fires once at each specified seconds-remaining value
+   ================================================================== */
+const TIMELINE = new Map([
+  [290, () => {
+    showBanner('FORGE STATUS', 'Ignition Sequence Initiated — Stand By');
+  }],
+  [240, () => {
+    setPhase('warming', { max: 220, speed: 1.00 });
+    setHeatLayers(1);
+    hudLabelEl.textContent     = 'Core Warming';
+    chamberLabelEl.textContent = 'Phase 1 — Warming';
+    hudSubEl.textContent       = 'Heating Up';
+    showBanner('PHASE 1', 'Warming The Core — Temperature Nominal');
+  }],
+  [210, () => {
+    showBanner('STATUS', 'Temperature Rising — All Systems Green');
+  }],
+  [180, () => {
+    setPhase('heating', { max: 290, speed: 1.18 });
+    setHeatLayers(2);
+    hudLabelEl.textContent     = 'Core Heating Up';
+    chamberLabelEl.textContent = 'Phase 2 — Heating';
+    hudSubEl.textContent       = 'Stay Tuned';
+    showBanner('PHASE 2', 'Core Temperature Elevating — Hold Steady');
+  }],
+  [150, () => {
+    showBanner('STATUS', 'All Systems Operational — Forge Stable');
+  }],
+  [120, () => {
+    setPhase('hot', { max: 360, speed: 1.35 });
+    setHeatLayers(3);
+    hudLabelEl.textContent     = 'Forge Running Hot';
+    chamberLabelEl.textContent = 'Phase 3 — Running Hot';
+    hudSubEl.textContent       = 'Almost Ready';
+    showBanner('PHASE 3', 'Forge Is Running Hot — Output Increasing');
+  }],
+  [90, () => {
+    showBanner('ALERT', '90 Seconds And Counting — Prepare Yourselves');
+  }],
+  [60, () => {
+    setPhase('overload', { max: 430, speed: 1.60 });
+    setHeatLayers(4);
+    swapSmiley('assets/Smiley_Happy.png');
+    hudLabelEl.textContent     = 'Ignition Imminent';
+    chamberLabelEl.textContent = 'Phase 4 — Imminent';
+    hudSubEl.textContent       = 'Get Ready';
+    showBanner('PHASE 4', 'Imminent Ignition — Stand By For Activation');
+  }],
+  [45, () => {
+    showBanner('ALERT', 'Stand By — Stream Activation In 45 Seconds');
+  }],
+  [30, () => {
+    showBanner('ALERT', 'Thirty Seconds — Prepare Yourselves');
+  }],
+  [15, () => {
+    showBanner('CRITICAL', 'Critical Threshold Approaching');
+  }],
+]);
+
+/* ==================================================================
+   COUNTDOWN
+   ================================================================== */
+let total       = TOTAL_SECONDS;
+let critPhase   = false; // true once critical kicks in
+
+// Boot in cold phase
+setPhase('cold', { max: 160, speed: 0.90 });
+setHeatLayers(0);
+
+const fmt = s =>
+  String(Math.floor(s / 60)).padStart(2,'0') + ':' +
+  String(s % 60).padStart(2,'0');
+
+function tick() {
+  // Display + progress bars
+  timeEl.textContent      = fmt(total);
+  const pct               = (total / TOTAL_SECONDS) * 100;
+  hudProgEl.style.width   = pct + '%';
+  chamberProgEl.style.width = pct + '%';
+
+  // Heat gauge fills as time depletes
+  const elapsed = TOTAL_SECONDS - total;
+  heatGaugeEl.style.height = ((elapsed / TOTAL_SECONDS) * 100).toFixed(2) + '%';
+
+  // Timeline events
+  const fn = TIMELINE.get(total);
+  if (fn) fn();
+
+  // Critical phase (<=10 s)
+  if (total <= 10) {
+    if (!critPhase) {
+      critPhase = true;
+      root.classList.add('critical');
+      swapSmiley('assets/Smiley_Cruel.png');
+      hudLabelEl.textContent     = 'Critical Threshold';
+      chamberLabelEl.textContent = 'Critical — Igniting';
+    }
+    stateEl.textContent = 'Ignition Imminent';
+  } else {
+    // Status text driven by current phase
+    if      (root.classList.contains('phase-overload')) stateEl.textContent = 'Almost There';
+    else if (root.classList.contains('phase-hot'))      stateEl.textContent = 'Forge Is Hot';
+    else if (root.classList.contains('phase-heating'))  stateEl.textContent = 'Heating Up';
+    else if (root.classList.contains('phase-warming'))  stateEl.textContent = 'Warming Up';
+    else                                                stateEl.textContent = 'Initialising';
+  }
+
+  // End
+  if (total === 0) {
+    clearInterval(timerID);
+    ignite();
+    return;
+  }
+
+  total--;
+}
+
+tick();
+const timerID = setInterval(tick, 1000);
+
+/* ==================================================================
+   IGNITION
+   ================================================================== */
+function ignite() {
+  timeEl.textContent = '00:00';
+  root.classList.remove('critical');
+  root.classList.add('ignited');
+  sparkBurst();
+  setTimeout(() => { burstMode = false; }, 3500);
+}
+
+/* ==================================================================
+   SPARK SYSTEM — high-velocity directional line strokes
+   ================================================================== */
+const canvas = document.getElementById('sparks');
+const ctx    = canvas.getContext('2d', { alpha: true });
+let W = 0, H = 0, DPR = 1;
+
+function resize() {
+  const r = canvas.getBoundingClientRect();
+  DPR = Math.min(2, window.devicePixelRatio || 1);
+  W   = Math.floor(r.width);
+  H   = Math.floor(r.height);
+  canvas.width  = Math.floor(W * DPR);
+  canvas.height = Math.floor(H * DPR);
+  ctx.setTransform(DPR, 0, 0, DPR, 0, 0);
+}
+new ResizeObserver(resize).observe(canvas);
+window.addEventListener('load', resize);
+
+const sparks    = [];
+const MAX_BURST = 700;
+const rnd       = (a, b) => a + Math.random() * (b - a);
+
+function spawnSpark() {
+  // Weighted toward the left (chamber) side and centre
+  const z = Math.random();
+  let x;
+  if      (z < 0.42) x = rnd(W * 0.04, W * 0.36); // chamber base
+  else if (z < 0.72) x = rnd(W * 0.38, W * 0.66); // centre
+  else                x = rnd(W * 0.66, W * 0.96); // right
+
+  const spd   = rnd(2.4, 7.6);
+  const angle = rnd(-0.38, 0.38) - Math.PI * 0.5;
+  const life  = rnd(50, 192);
+
+  sparks.push({
+    x, y: H + rnd(0, 24),
+    vx: Math.cos(angle) * spd,
+    vy: Math.sin(angle) * spd,
+    hue:  rnd(16, 50),
+    alpha: rnd(0.55, 1.00),
+    len:  spd * rnd(2.0, 5.0),
+    life, maxLife: life, age: 0,
+    wAmp: rnd(0.03, 0.06),
+    wFreq: rnd(0.04, 0.14),
+    lw:   rnd(0.7, 2.0),
+  });
+}
+
+function fill() {
+  const cap = burstMode ? MAX_BURST : sparkMax;
+  while (sparks.length < cap) spawnSpark();
+}
+fill();
+
+function sparkBurst() {
+  burstMode = true;
+  const cx = W * 0.5, cy = H * 0.5;
+  for (let i = 0; i < 480; i++) {
+    const angle = Math.random() * Math.PI * 2;
+    const spd   = rnd(4.0, 16.0);
+    const life  = rnd(80, 240);
+    sparks.push({
+      x: cx + rnd(-60, 60),
+      y: cy + rnd(-40, 40),
+      vx: Math.cos(angle) * spd,
+      vy: Math.sin(angle) * spd - rnd(0, 3),
+      hue: rnd(14, 52), alpha: rnd(0.70, 1.00),
+      len: spd * rnd(3, 7), life, maxLife: life, age: 0,
+      wAmp: 0, wFreq: 0, lw: rnd(1.0, 2.8),
+    });
+  }
+}
+
+function draw() {
+  if (!W || !H) { requestAnimationFrame(draw); return; }
+  ctx.clearRect(0, 0, W, H);
+
+  const isCrit   = root.classList.contains('critical');
+  const speedMul = isCrit ? phaseSpeedMul * 2.1 : phaseSpeedMul;
+
+  for (let i = sparks.length - 1; i >= 0; i--) {
+    const s = sparks[i];
+    s.age += speedMul;
+    s.x   += s.vx * speedMul;
+    s.y   += s.vy * speedMul;
+    s.vx  += Math.sin(s.age * s.wFreq) * s.wAmp;
+    s.vy  -= 0.045; // heat lift
+
+    const k = 1 - s.age / s.maxLife;
+    if (k <= 0 || s.y < -90 || s.x < -70 || s.x > W + 70) {
+      sparks.splice(i, 1); continue;
     }
 
-    total = Math.max(0, total - 1);
-    if (total === 0){
-      stateEl.textContent = "go time";
-      clearInterval(timer);
-    }
-  }
-  tick();
-  const timer = setInterval(tick, 1000);
+    const a   = s.alpha * Math.pow(k, 0.55);
+    const spd = Math.hypot(s.vx, s.vy) || 1;
+    const nx  = s.vx / spd, ny = s.vy / spd;
+    const tLen = s.len * k;
+    const tx  = s.x - nx * tLen, ty = s.y - ny * tLen;
+    const h   = isCrit ? s.hue * 0.35 : s.hue; // shift red in critical
 
-  // -------- Embers (OBS-safe) --------
-  const canvas = document.getElementById("embers");
-  const ctx = canvas.getContext("2d", { alpha:true });
+    const gr = ctx.createLinearGradient(tx, ty, s.x, s.y);
+    gr.addColorStop(0,    `hsla(${h},    100%, 60%, 0)`);
+    gr.addColorStop(0.55, `hsla(${h},    100%, 72%, ${(a * 0.68).toFixed(3)})`);
+    gr.addColorStop(1,    `hsla(${h + 14},100%, 94%, ${a.toFixed(3)})`);
 
-  let W=0,H=0,DPR=1;
+    ctx.beginPath();
+    ctx.moveTo(tx, ty); ctx.lineTo(s.x, s.y);
+    ctx.strokeStyle = gr;
+    ctx.lineWidth   = s.lw * rnd(0.75, 1.25); // subtle crackle per frame
+    ctx.lineCap     = 'round';
+    ctx.stroke();
 
-  function resize(){
-    const rect = canvas.getBoundingClientRect();
-    DPR = Math.max(1, Math.min(2, window.devicePixelRatio || 1));
-    W = Math.floor(rect.width);
-    H = Math.floor(rect.height);
-    canvas.width = Math.floor(W * DPR);
-    canvas.height = Math.floor(H * DPR);
-    ctx.setTransform(DPR,0,0,DPR,0,0);
-  }
-
-  const ro = new ResizeObserver(resize);
-  ro.observe(canvas);
-  window.addEventListener("load", resize);
-
-  const embers=[];
-  const MAX=120;
-  const rand=(a,b)=>a+Math.random()*(b-a);
-
-  function spawn(){
-    const hotspot = Math.random()<0.55;
-    const x = hotspot ? (W*0.45 + rand(-320,320)) : rand(0,W);
-    const y = rand(H*0.72, H+50);
-    const r = rand(1.0, 3.2);
-    const vy = -rand(0.7, 2.3);
-    const vx = rand(-0.32, 0.32);
-    const life = rand(120, 260);
-    const hue = rand(22, 48);
-    const sat = rand(85, 100);
-    const light = rand(54, 72);
-    const alpha = rand(0.16, 0.60);
-    embers.push({x,y,vx,vy,r,life,t:0,hue,sat,light,alpha,tw:rand(0.6,1.8)});
+    // Bright tip dot
+    ctx.beginPath();
+    ctx.arc(s.x, s.y, 1.1, 0, Math.PI * 2);
+    ctx.fillStyle = `hsla(${h + 20}, 100%, 96%, ${(a * 0.92).toFixed(3)})`;
+    ctx.fill();
   }
 
-  function ensure(){ while(embers.length<MAX) spawn(); }
-  ensure();
+  fill();
+  requestAnimationFrame(draw);
+}
 
-  function draw(){
-    if(!W||!H){ requestAnimationFrame(draw); return; }
-    ctx.clearRect(0,0,W,H);
-
-    // subtle bottom heat tint
-    const g = ctx.createRadialGradient(W*0.5, H*0.95, 10, W*0.5, H*0.95, Math.max(W,H)*0.65);
-    g.addColorStop(0,"rgba(255,122,24,0.10)");
-    g.addColorStop(0.35,"rgba(255,176,0,0.05)");
-    g.addColorStop(1,"rgba(255,176,0,0)");
-    ctx.fillStyle=g;
-    ctx.fillRect(0,0,W,H);
-
-    for(let i=embers.length-1;i>=0;i--){
-      const e=embers[i];
-      e.t++;
-      e.x += e.vx + Math.sin((e.t/18)*e.tw)*0.22;
-      e.y += e.vy;
-      e.vx *= 0.998;
-
-      const k = 1 - (e.t/e.life);
-      const a = Math.max(0, e.alpha*k);
-      const rr = e.r*(0.9+(1-k)*0.25);
-
-      ctx.beginPath();
-      ctx.fillStyle = `hsla(${e.hue},${e.sat}%,${e.light}%,${a})`;
-      ctx.arc(e.x,e.y,rr,0,Math.PI*2);
-      ctx.fill();
-
-      ctx.beginPath();
-      ctx.fillStyle = `hsla(${e.hue},${e.sat}%,${Math.min(92,e.light+18)}%,${a*0.55})`;
-      ctx.arc(e.x,e.y,rr*2.1,0,Math.PI*2);
-      ctx.fill();
-
-      if(e.t>e.life || e.y<-70 || e.x<-90 || e.x>W+90){
-        embers.splice(i,1);
-      }
-    }
-
-    ensure();
-    requestAnimationFrame(draw);
-  }
-  draw();
+draw();
 </script>
 </body>
 </html>

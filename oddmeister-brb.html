@@ -1,0 +1,549 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8"/>
+<title>Oddmeister — BRB</title>
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link href="https://fonts.googleapis.com/css2?family=Bebas+Neue&family=Oswald:wght@300;400;700&display=swap" rel="stylesheet">
+<style>
+*,*::before,*::after{box-sizing:border-box;margin:0;padding:0}
+html,body{width:100%;height:100%;overflow:hidden;background:#000;font-family:'Oswald',sans-serif;color:#fff}
+
+canvas{position:fixed;inset:0;pointer-events:none}
+#cv-bg{z-index:0}
+#cv-fire{z-index:2;mix-blend-mode:screen}
+#cv-sparks{z-index:3;mix-blend-mode:screen}
+
+.vignette{
+  position:fixed;inset:0;z-index:5;pointer-events:none;
+  background:radial-gradient(ellipse 75% 75% at 50% 50%,transparent 20%,rgba(0,0,0,0.97) 100%);
+}
+
+/* ── TOP HUD ── */
+.hud-top{
+  position:fixed;top:0;left:0;right:0;z-index:10;
+  display:flex;align-items:center;justify-content:space-between;
+  padding:0 44px;height:54px;
+  border-bottom:1px solid rgba(255,80,0,0.2);
+  background:linear-gradient(180deg,rgba(0,0,0,0.85),transparent);
+}
+.brand{font-family:'Bebas Neue',sans-serif;font-size:26px;letter-spacing:0.14em;color:#ff6600;
+  text-shadow:0 0 24px rgba(255,100,0,0.9),0 0 60px rgba(255,60,0,0.5)}
+.hud-mid{font-size:10px;letter-spacing:0.45em;text-transform:uppercase;color:rgba(255,255,255,0.18)}
+.hud-right{display:flex;align-items:center;gap:10px;font-size:10px;letter-spacing:0.28em;text-transform:uppercase;color:rgba(255,120,0,0.6)}
+.pdot{width:7px;height:7px;border-radius:50%;background:#ff9900;box-shadow:0 0 10px #ff9900;animation:pdot 2s ease-in-out infinite}
+@keyframes pdot{0%,100%{opacity:1}50%{opacity:0.2}}
+
+/* ── MAIN LAYOUT ── */
+.main-layout{
+  position:fixed;inset:0;z-index:10;
+  display:grid;
+  grid-template-columns:1fr 320px;
+  grid-template-rows:54px 1fr 70px;
+  padding:0;
+}
+
+/* ── BRB CENTER AREA ── */
+.brb-center{
+  grid-column:1;grid-row:2;
+  display:flex;flex-direction:column;align-items:center;justify-content:center;
+  gap:32px;
+  padding:0 60px;
+  animation:enter-up 1s 0.2s cubic-bezier(0.16,1,0.3,1) both;
+}
+@keyframes enter-up{from{opacity:0;transform:translateY(30px)}to{opacity:1;transform:translateY(0)}}
+
+/* Smiley */
+.smiley-frame{
+  position:relative;width:220px;height:220px;
+  display:flex;align-items:center;justify-content:center;
+}
+.fire-ring{
+  position:absolute;inset:-10px;border-radius:50%;
+  background:conic-gradient(#ff1a00 0deg,#ff6600 40deg,#ffaa00 80deg,#ff6600 120deg,#ff1a00 160deg,transparent 200deg,#ff2200 260deg,#ff8800 300deg,#ff1a00 360deg);
+  animation:ring-spin 3s linear infinite;filter:blur(3px);opacity:0.7;
+}
+@keyframes ring-spin{to{transform:rotate(360deg)}}
+.fire-ring-mask{position:absolute;inset:0;border-radius:50%;background:radial-gradient(circle,#050508 62%,transparent 100%);z-index:1}
+.smiley-glow{
+  position:absolute;inset:-25px;border-radius:50%;
+  background:radial-gradient(circle,rgba(255,100,0,0.2) 0%,transparent 70%);
+  filter:blur(20px);z-index:0;
+  animation:glow-breathe 3s ease-in-out infinite alternate;
+}
+@keyframes glow-breathe{from{transform:scale(0.9);opacity:0.5}to{transform:scale(1.1);opacity:0.9}}
+.smiley-img{
+  position:absolute;width:72%;height:72%;object-fit:contain;z-index:2;
+  filter:drop-shadow(0 0 18px rgba(255,160,0,0.55));
+  animation:sf-breathe 4s ease-in-out infinite;
+}
+@keyframes sf-breathe{0%,100%{transform:scale(1)}50%{transform:scale(1.04)}}
+
+/* BRB Text Block */
+.brb-text-block{text-align:center}
+.brb-eyebrow{font-size:10px;letter-spacing:0.55em;text-transform:uppercase;color:rgba(255,120,0,0.6);margin-bottom:10px}
+.brb-headline{
+  font-family:'Bebas Neue',sans-serif;
+  font-size:clamp(72px,10vw,130px);
+  line-height:0.85;letter-spacing:0.05em;
+  background:linear-gradient(160deg,#fff 0%,#ffd580 40%,#ff8c00 100%);
+  -webkit-background-clip:text;background-clip:text;-webkit-text-fill-color:transparent;
+  filter:drop-shadow(0 2px 20px rgba(255,120,0,0.5));
+}
+.brb-sub{
+  font-family:'Bebas Neue',sans-serif;
+  font-size:clamp(28px,3.5vw,44px);
+  letter-spacing:0.14em;
+  background:linear-gradient(160deg,#ff9900,#ff3300);
+  -webkit-background-clip:text;background-clip:text;-webkit-text-fill-color:transparent;
+  margin-top:6px;
+}
+.brb-sep{display:flex;align-items:center;justify-content:center;gap:10px;margin:18px auto;width:280px}
+.sep-l,.sep-r{flex:1;height:1px;background:linear-gradient(90deg,transparent,rgba(255,100,0,0.4))}
+.sep-r{background:linear-gradient(90deg,rgba(255,100,0,0.4),transparent)}
+.sep-d{width:6px;height:6px;background:#ff6600;transform:rotate(45deg);box-shadow:0 0 10px rgba(255,100,0,0.8)}
+.brb-tagline{
+  font-size:12px;letter-spacing:0.35em;text-transform:uppercase;
+  color:rgba(255,255,255,0.3);line-height:2;
+}
+.brb-tagline span{color:rgba(255,140,60,0.7)}
+
+/* Animated dots */
+.dots{display:inline-block}
+.dots::after{
+  content:'';
+  animation:dot-cycle 1.5s steps(4,end) infinite;
+}
+@keyframes dot-cycle{
+  0%{content:''}
+  25%{content:'.'}
+  50%{content:'..'}
+  75%{content:'...'}
+  100%{content:''}
+}
+
+/* ── CHAT PANEL ── */
+.chat-panel{
+  grid-column:2;grid-row:2;
+  display:flex;flex-direction:column;
+  border-left:1px solid rgba(255,80,0,0.15);
+  background:rgba(0,0,0,0.6);
+  backdrop-filter:blur(4px);
+  animation:enter-r 1s 0.4s cubic-bezier(0.16,1,0.3,1) both;
+  overflow:hidden;
+}
+@keyframes enter-r{from{opacity:0;transform:translateX(40px)}to{opacity:1;transform:translateX(0)}}
+
+.chat-header{
+  padding:14px 18px 12px;
+  border-bottom:1px solid rgba(255,80,0,0.15);
+  display:flex;align-items:center;justify-content:space-between;
+  flex-shrink:0;
+}
+.chat-title{font-size:9px;letter-spacing:0.45em;text-transform:uppercase;color:rgba(255,120,0,0.7)}
+.chat-platforms{display:flex;gap:8px;align-items:center}
+.plat-badge{
+  display:flex;align-items:center;gap:4px;
+  padding:3px 8px;border-radius:2px;
+  font-size:8px;letter-spacing:0.25em;text-transform:uppercase;
+  font-family:'Oswald',sans-serif;font-weight:400;
+}
+.plat-twitch{background:rgba(145,71,255,0.15);border:1px solid rgba(145,71,255,0.3);color:#9147ff}
+.plat-youtube{background:rgba(255,0,0,0.1);border:1px solid rgba(255,0,0,0.25);color:#ff4444}
+.plat-kick{background:rgba(83,252,24,0.08);border:1px solid rgba(83,252,24,0.25);color:#53fc18}
+.plat-dot{width:5px;height:5px;border-radius:50%;animation:live-blink 1.5s ease-in-out infinite}
+.plat-twitch .plat-dot{background:#9147ff;box-shadow:0 0 6px #9147ff}
+.plat-youtube .plat-dot{background:#ff4444;box-shadow:0 0 6px #ff4444}
+.plat-kick .plat-dot{background:#53fc18;box-shadow:0 0 6px #53fc18}
+@keyframes live-blink{0%,100%{opacity:1}50%{opacity:0.3}}
+
+.chat-messages{
+  flex:1;
+  overflow-y:auto;
+  padding:12px 0;
+  display:flex;flex-direction:column;gap:0;
+  scroll-behavior:smooth;
+}
+.chat-messages::-webkit-scrollbar{width:2px}
+.chat-messages::-webkit-scrollbar-track{background:transparent}
+.chat-messages::-webkit-scrollbar-thumb{background:rgba(255,100,0,0.3);border-radius:2px}
+
+.chat-msg{
+  display:flex;align-items:flex-start;gap:0;
+  padding:6px 16px;
+  transition:background 0.2s;
+  border-left:2px solid transparent;
+}
+.chat-msg:hover{background:rgba(255,255,255,0.03)}
+.chat-msg.twitch-msg{border-left-color:rgba(145,71,255,0.5)}
+.chat-msg.youtube-msg{border-left-color:rgba(255,68,68,0.5)}
+.chat-msg.kick-msg{border-left-color:rgba(83,252,24,0.5)}
+
+.msg-platform{width:14px;flex-shrink:0;margin-top:1px;margin-right:8px}
+.msg-platform svg{width:10px;height:10px}
+
+.msg-body{flex:1;min-width:0}
+.msg-author{
+  font-size:11px;font-weight:700;letter-spacing:0.05em;
+  display:inline;margin-right:6px;
+}
+.twitch-msg .msg-author{color:#b380ff}
+.youtube-msg .msg-author{color:#ff6b6b}
+.kick-msg .msg-author{color:#53fc18}
+.msg-text{font-size:11px;font-weight:300;color:rgba(255,255,255,0.75);letter-spacing:0.02em;line-height:1.4;display:inline}
+
+/* Platform indicator icons for chat */
+.plat-icon{width:8px;height:8px;display:inline-block;vertical-align:middle;margin-right:4px}
+
+/* ── SOCIAL BAR ── */
+.social-bar{
+  grid-column:1/3;grid-row:3;
+  display:flex;align-items:center;justify-content:center;gap:40px;
+  border-top:1px solid rgba(255,80,0,0.15);
+  background:linear-gradient(0deg,rgba(0,0,0,0.8),transparent);
+  padding:0 44px;
+  animation:enter-up 1s 0.6s cubic-bezier(0.16,1,0.3,1) both;
+}
+.social-item{display:flex;align-items:center;gap:8px}
+.social-icon{width:16px;height:16px}
+.social-handle{font-size:10px;letter-spacing:0.25em;text-transform:uppercase;color:rgba(255,255,255,0.35)}
+.social-handle b{color:rgba(255,140,60,0.75);font-weight:400}
+.social-sep{width:1px;height:20px;background:rgba(255,80,0,0.2)}
+
+/* ── FIRE VFX ── */
+#cv-overlay{
+  position:fixed;inset:0;z-index:6;
+  mix-blend-mode:screen;pointer-events:none;
+}
+</style>
+</head>
+<body>
+
+<canvas id="cv-bg"></canvas>
+<canvas id="cv-fire"></canvas>
+<canvas id="cv-sparks"></canvas>
+<canvas id="cv-overlay"></canvas>
+<div class="vignette"></div>
+
+<!-- ── TOP HUD ── -->
+<div class="hud-top">
+  <div class="brand">Oddmeister</div>
+  <div class="hud-mid">Stream Status</div>
+  <div class="hud-right">
+    <div class="pdot"></div>
+    BRB
+  </div>
+</div>
+
+<!-- ── MAIN LAYOUT ── -->
+<div class="main-layout">
+
+  <!-- BRB Center -->
+  <div class="brb-center">
+    <!-- Smiley -->
+    <div class="smiley-frame">
+      <div class="smiley-glow"></div>
+      <div class="fire-ring"></div>
+      <div class="fire-ring-mask"></div>
+      <img class="smiley-img" src="assets/Smiley_Happy.png" alt="Smiley">
+    </div>
+
+    <!-- BRB Text -->
+    <div class="brb-text-block">
+      <div class="brb-eyebrow">— Stream Paused —</div>
+      <div class="brb-headline">BRB</div>
+      <div class="brb-sub">Back in a moment</div>
+      <div class="brb-sep">
+        <div class="sep-l"></div>
+        <div class="sep-d"></div>
+        <div class="sep-r"></div>
+      </div>
+      <div class="brb-tagline">
+        Hang tight, the forge stays hot<br>
+        <span>Chat keeps going<span class="dots"></span></span>
+      </div>
+    </div>
+  </div>
+
+  <!-- Chat Panel -->
+  <div class="chat-panel">
+    <div class="chat-header">
+      <div class="chat-title">Live Chat</div>
+      <div class="chat-platforms">
+        <div class="plat-badge plat-twitch"><div class="plat-dot"></div>TW</div>
+        <div class="plat-badge plat-youtube"><div class="plat-dot"></div>YT</div>
+        <div class="plat-badge plat-kick"><div class="plat-dot"></div>KICK</div>
+      </div>
+    </div>
+    <div class="chat-messages" id="chat-feed">
+      <!-- Messages injected by JS -->
+    </div>
+  </div>
+
+  <!-- Social Bar -->
+  <div class="social-bar">
+    <!-- YouTube -->
+    <div class="social-item">
+      <svg class="social-icon" viewBox="0 0 24 24">
+        <path d="M23.5 6.2s-.23-1.64-.95-2.36c-.91-.95-1.92-.96-2.38-1.01C17.26 2.67 12 2.67 12 2.67s-5.26 0-8.17.16C3.37 2.89 2.36 2.9 1.45 3.84.73 4.56.5 6.2.5 6.2S.27 8.12.27 10.03v1.77c0 1.91.23 3.83.23 3.83s.23 1.64.95 2.36c.91.95 2.13.92 2.67 1.02C5.84 19.15 12 19.2 12 19.2s5.26 0 8.17-.16c.46-.06 1.47-.06 2.38-1.01.72-.72.95-2.36.95-2.36s.23-1.92.23-3.83v-1.77C23.73 8.12 23.5 6.2 23.5 6.2z" fill="#FF0000"/>
+        <path d="M9.73 14.96V8.76l6.44 3.1-6.44 3.1z" fill="#fff"/>
+      </svg>
+      <div class="social-handle"><b>@OddmeisterTV</b></div>
+    </div>
+    <div class="social-sep"></div>
+    <!-- Twitch -->
+    <div class="social-item">
+      <svg class="social-icon" viewBox="0 0 24 24">
+        <path d="M11.571 4.714h1.715v5.143H11.57zm4.715 0H18v5.143h-1.714zM6 0L1.714 4.286v15.428h5.143V24l4.286-4.286h3.428L22.286 12V0zm14.571 11.143l-3.428 3.428h-3.429l-3 3v-3H6.857V1.714h13.714z" fill="#9146FF"/>
+      </svg>
+      <div class="social-handle"><b>@Oddmeister</b></div>
+    </div>
+    <div class="social-sep"></div>
+    <!-- Kick -->
+    <div class="social-item">
+      <svg class="social-icon" viewBox="0 0 24 24">
+        <rect width="24" height="24" rx="4" fill="#53FC18" opacity="0.15"/>
+        <path d="M6 4h3v6.5l4.5-6.5H17l-5 7 5.5 9h-3.8L9 13.5V20H6V4z" fill="#53FC18"/>
+      </svg>
+      <div class="social-handle"><b>@Oddmeister</b></div>
+    </div>
+    <div class="social-sep"></div>
+    <!-- Discord -->
+    <div class="social-item">
+      <svg class="social-icon" viewBox="0 0 24 24">
+        <path d="M20.317 4.37a19.791 19.791 0 00-4.885-1.515.074.074 0 00-.079.037c-.21.375-.444.864-.608 1.25a18.27 18.27 0 00-5.487 0 12.64 12.64 0 00-.617-1.25.077.077 0 00-.079-.037A19.736 19.736 0 003.677 4.37a.07.07 0 00-.032.027C.533 9.046-.32 13.58.099 18.057a.082.082 0 00.031.057 19.9 19.9 0 005.993 3.03.078.078 0 00.084-.028 14.09 14.09 0 001.226-1.994.076.076 0 00-.041-.106 13.107 13.107 0 01-1.872-.892.077.077 0 01-.008-.128 10.2 10.2 0 00.372-.292.074.074 0 01.077-.01c3.928 1.793 8.18 1.793 12.062 0a.074.074 0 01.078.01c.12.098.246.198.373.292a.077.077 0 01-.006.127 12.299 12.299 0 01-1.873.892.077.077 0 00-.041.107c.36.698.772 1.362 1.225 1.993a.076.076 0 00.084.028 19.839 19.839 0 006.002-3.03.077.077 0 00.032-.054c.5-5.177-.838-9.674-3.549-13.66a.061.061 0 00-.031-.03z" fill="#7289DA"/>
+      </svg>
+      <div class="social-handle">type <b>!discord</b> in chat</div>
+    </div>
+  </div>
+
+</div>
+
+<script>
+// ═══════════════════════════════════════
+// BACKGROUND CANVAS — slow ember drift
+// ═══════════════════════════════════════
+const bgCv = document.getElementById('cv-bg');
+const bgCtx = bgCv.getContext('2d');
+const fireCv = document.getElementById('cv-fire');
+const fireCtx = fireCv.getContext('2d');
+const sparkCv = document.getElementById('cv-sparks');
+const sparkCtx = sparkCv.getContext('2d');
+const ovrCv = document.getElementById('cv-overlay');
+const ovrCtx = ovrCv.getContext('2d');
+
+function resize(){
+  [bgCv, fireCv, sparkCv, ovrCv].forEach(c=>{
+    c.width = window.innerWidth;
+    c.height = window.innerHeight;
+  });
+}
+resize();
+window.addEventListener('resize', resize);
+
+// Background particles
+const bgParticles = Array.from({length:60},()=>({
+  x: Math.random()*1920,
+  y: Math.random()*1080,
+  r: Math.random()*1.5+0.4,
+  vx: (Math.random()-0.5)*0.15,
+  vy: -(Math.random()*0.3+0.05),
+  life: Math.random(),
+  maxLife: Math.random()*0.6+0.2,
+  color: Math.random()<0.5?'#ff6600':'#ff9900',
+}));
+
+function drawBg(){
+  bgCtx.clearRect(0,0,bgCv.width,bgCv.height);
+  bgParticles.forEach(p=>{
+    p.x+=p.vx; p.y+=p.vy; p.life+=0.003;
+    if(p.life>p.maxLife||p.y<0){
+      p.x=Math.random()*bgCv.width;
+      p.y=bgCv.height+10;
+      p.life=0;
+    }
+    const a = Math.sin((p.life/p.maxLife)*Math.PI)*0.5;
+    bgCtx.globalAlpha=a;
+    bgCtx.fillStyle=p.color;
+    bgCtx.shadowBlur=8;bgCtx.shadowColor=p.color;
+    bgCtx.beginPath();
+    bgCtx.arc(p.x,p.y,p.r,0,Math.PI*2);
+    bgCtx.fill();
+  });
+  bgCtx.globalAlpha=1;bgCtx.shadowBlur=0;
+}
+
+// Fire ring emitters (around smiley center position)
+const flames=[];
+let flameTick=0;
+
+class Flame{
+  constructor(){
+    const cx = window.innerWidth*0.38; // approx smiley x
+    const cy = window.innerHeight*0.48;
+    const angle = Math.random()*Math.PI*2;
+    const r = 110+Math.random()*10;
+    this.x = cx+Math.cos(angle)*r;
+    this.y = cy+Math.sin(angle)*r;
+    this.vx = Math.cos(angle)*(Math.random()*0.8+0.3);
+    this.vy = Math.sin(angle)*(Math.random()*0.8+0.3)-0.4;
+    this.size = Math.random()*8+4;
+    this.life = 1;
+    this.decay = Math.random()*0.025+0.015;
+    this.hue = Math.floor(Math.random()*35+5);
+  }
+  update(){this.x+=this.vx;this.y+=this.vy;this.life-=this.decay;this.size*=0.94;}
+  draw(ctx){
+    ctx.globalAlpha=Math.max(0,this.life*0.7);
+    ctx.fillStyle=`hsl(${this.hue},100%,55%)`;
+    ctx.shadowBlur=12;ctx.shadowColor=`hsl(${this.hue},100%,55%)`;
+    ctx.beginPath();ctx.arc(this.x,this.y,this.size,0,Math.PI*2);ctx.fill();
+  }
+}
+
+function drawFire(){
+  fireCtx.clearRect(0,0,fireCv.width,fireCv.height);
+  fireCtx.globalCompositeOperation='lighter';
+  flameTick++;
+  if(flameTick%3===0) flames.push(new Flame());
+  for(let i=flames.length-1;i>=0;i--){
+    flames[i].update();
+    flames[i].draw(fireCtx);
+    if(flames[i].life<=0)flames.splice(i,1);
+  }
+  fireCtx.globalAlpha=1;fireCtx.shadowBlur=0;
+}
+
+function loop(){
+  drawBg();
+  drawFire();
+  requestAnimationFrame(loop);
+}
+loop();
+
+// ═══════════════════════════════════════
+// CHAT SYSTEM
+// ═══════════════════════════════════════
+// Platform icons as inline SVG strings
+const ICONS = {
+  twitch: `<svg viewBox="0 0 24 24" fill="#9146ff" width="10" height="10"><path d="M11.571 4.714h1.715v5.143H11.57zm4.715 0H18v5.143h-1.714zM6 0L1.714 4.286v15.428h5.143V24l4.286-4.286h3.428L22.286 12V0zm14.571 11.143l-3.428 3.428h-3.429l-3 3v-3H6.857V1.714h13.714z"/></svg>`,
+  youtube: `<svg viewBox="0 0 24 24" fill="#ff4444" width="10" height="10"><path d="M23.5 6.2s-.23-1.64-.95-2.36c-.91-.95-1.92-.96-2.38-1.01C17.26 2.67 12 2.67 12 2.67s-5.26 0-8.17.16C3.37 2.89 2.36 2.9 1.45 3.84.73 4.56.5 6.2.5 6.2S.27 8.12.27 10.03v1.77c0 1.91.23 3.83.23 3.83s.23 1.64.95 2.36c.91.95 2.13.92 2.67 1.02C5.84 19.15 12 19.2 12 19.2s5.26 0 8.17-.16c.46-.06 1.47-.06 2.38-1.01.72-.72.95-2.36.95-2.36s.23-1.92.23-3.83v-1.77C23.73 8.12 23.5 6.2 23.5 6.2z"/><path d="M9.73 14.96V8.76l6.44 3.1-6.44 3.1z" fill="#fff"/></svg>`,
+  kick: `<svg viewBox="0 0 24 24" width="10" height="10"><path d="M6 4h3v6.5l4.5-6.5H17l-5 7 5.5 9h-3.8L9 13.5V20H6V4z" fill="#53fc18"/></svg>`
+};
+
+// Demo messages pool — replace with real chat overlay integration
+const MSG_POOL = [
+  {platform:'twitch',  author:'PyroFan99',   text:'LETS GOOO hurry back 🔥'},
+  {platform:'youtube', author:'GamingKnight', text:'This BRB screen is fire literally'},
+  {platform:'kick',    author:'OddFan',       text:'Smiley watching over us 😂'},
+  {platform:'twitch',  author:'xXShadow',     text:'PogChamp'},
+  {platform:'youtube', author:'StreamWatcher',text:'Love the aesthetic on this overlay'},
+  {platform:'twitch',  author:'Blaze_Mode',   text:'Counting down every second 👀'},
+  {platform:'kick',    author:'KickViewer',   text:'First time catching a BRB live'},
+  {platform:'twitch',  author:'FireWatch101', text:'This smiley gives me anxiety lmao'},
+  {platform:'youtube', author:'Subscriber42', text:'The fire ring is INSANE'},
+  {platform:'twitch',  author:'ChaoticGood',  text:'HeyGuys'},
+  {platform:'kick',    author:'GreenGoblin',  text:'kick is popping off tonight'},
+  {platform:'twitch',  author:'VelvetHammer', text:'Patiently waiting like a true fan'},
+  {platform:'youtube', author:'AlphaViewer',  text:'Can someone clip the transition?'},
+  {platform:'twitch',  author:'NightOwl',     text:'@Oddmeister hurry up 😤'},
+  {platform:'kick',    author:'NewMember',    text:'Just discovered this channel, wow'},
+  {platform:'twitch',  author:'PepsiMax',     text:'LUL forsenE'},
+  {platform:'youtube', author:'CasualYT',     text:'Does he stream daily?'},
+  {platform:'twitch',  author:'TwitchRaider', text:'Raid incoming? monkaS'},
+  {platform:'kick',    author:'KickLurker',   text:'👀👀👀'},
+  {platform:'twitch',  author:'OddArmy',      text:'Already subbed, already hyped'},
+];
+
+const feed = document.getElementById('chat-feed');
+let msgIdx = 0;
+
+function addMessage(msg){
+  const el = document.createElement('div');
+  el.className = `chat-msg ${msg.platform}-msg`;
+  el.style.opacity='0';
+  el.style.transform='translateY(8px)';
+  el.style.transition='opacity 0.3s ease, transform 0.3s ease';
+
+  el.innerHTML = `
+    <div class="msg-platform">${ICONS[msg.platform]}</div>
+    <div class="msg-body">
+      <span class="msg-author">${escHtml(msg.author)}</span>
+      <span class="msg-text">${escHtml(msg.text)}</span>
+    </div>
+  `;
+  feed.appendChild(el);
+
+  // Cap messages
+  while(feed.children.length > 30){
+    feed.removeChild(feed.firstChild);
+  }
+
+  // Animate in
+  requestAnimationFrame(()=>{
+    requestAnimationFrame(()=>{
+      el.style.opacity='1';
+      el.style.transform='translateY(0)';
+    });
+  });
+
+  // Scroll to bottom
+  feed.scrollTop = feed.scrollHeight;
+}
+
+function escHtml(str){
+  return str.replace(/&/g,'&amp;').replace(/</g,'&lt;').replace(/>/g,'&gt;');
+}
+
+// Seed with initial messages
+for(let i=0;i<8;i++){
+  addMessage(MSG_POOL[i]);
+  msgIdx=8;
+}
+
+// Keep pumping messages at random intervals
+function scheduleNext(){
+  const delay = 2000 + Math.random()*4000;
+  setTimeout(()=>{
+    const msg = MSG_POOL[msgIdx % MSG_POOL.length];
+    msgIdx++;
+    addMessage(msg);
+    scheduleNext();
+  }, delay);
+}
+scheduleNext();
+
+// ═══════════════════════════════════════
+// REAL CHAT INTEGRATION GUIDE
+// ═══════════════════════════════════════
+// To connect real chat, replace the MSG_POOL demo system above with:
+//
+// OPTION 1 — StreamElements / Streamlabs Chat Widget:
+//   Load their chat widget in an iframe or use their Socket.IO API.
+//   StreamElements: https://streamelements.com/dashboard/overlays
+//
+// OPTION 2 — Chat overlay tools that support multi-platform:
+//   • Restream.io (Twitch + YouTube + Kick → one overlay URL)
+//   • StreamElements overlays (Twitch + YouTube)
+//   • KappaCraft, ChatV2 extensions
+//
+// OPTION 3 — Roll-your-own via WebSocket:
+//   Twitch IRC: wss://irc-ws.chat.twitch.tv (use tmi.js)
+//   YouTube: YouTube Live Polling API
+//   Kick: wss://ws-us2.pusher.com (unofficial, check community docs)
+//
+// Inject messages into this overlay via:
+//   window.postMessage({platform:'twitch',author:'user',text:'hello'}, '*')
+//
+// Then add: window.addEventListener('message', e => {
+//   if(e.data?.platform) addMessage(e.data);
+// });
+
+window.addEventListener('message', e => {
+  if(e.data && e.data.platform && e.data.author && e.data.text){
+    addMessage(e.data);
+  }
+});
+</script>
+</body>
+</html>

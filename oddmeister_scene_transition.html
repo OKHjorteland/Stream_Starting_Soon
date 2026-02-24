@@ -1,0 +1,290 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <title>Smiley Transition - Procedural Burner Ring & SFX</title>
+    <style>
+        :root {
+            --orange: #ff6600;
+            --deep-red: #ff3300;
+            --glow: rgba(255, 100, 0, 0.9);
+        }
+
+        body, html {
+            margin: 0; padding: 0; width: 100%; height: 100%;
+            overflow: hidden; 
+            background: transparent; 
+        }
+
+        .transition-container {
+            position: relative; 
+            width: 100vw; 
+            height: 100vh;
+            display: flex; 
+            align-items: center; 
+            justify-content: center;
+        }
+
+        /* The solid black wipe */
+        .wipe-bg {
+            position: absolute; 
+            inset: 0;
+            background: #000000; 
+            opacity: 0;
+            animation: fade-black 2.5s forwards; 
+            z-index: 1;
+        }
+
+        /* Embers Canvas */
+        #embers-canvas {
+            position: absolute;
+            inset: 0;
+            width: 100%;
+            height: 100%;
+            z-index: 4;
+            pointer-events: none;
+        }
+
+        /* Expanding Molten Shockwaves */
+        .shockwave {
+            position: absolute;
+            top: 50%; left: 50%;
+            border-radius: 50%;
+            transform: translate(-50%, -50%) scale(0);
+            opacity: 0;
+            z-index: 5;
+            box-shadow: 0 0 40px rgba(255, 100, 0, 0.5);
+            pointer-events: none;
+        }
+        
+        .sw-1 { width: 250px; height: 250px; border: 8px solid #ffaa00; animation: shockwave-exp 1.5s 0.3s ease-out forwards; }
+        .sw-2 { width: 250px; height: 250px; border: 6px solid #ff2200; animation: shockwave-exp 1.5s 0.5s ease-out forwards; }
+        .sw-3 { width: 250px; height: 250px; border: 4px solid #ffcc00; animation: shockwave-exp 1.5s 0.7s ease-out forwards; }
+
+        /* Main Container */
+        .smiley-boss {
+            position: relative;
+            width: 320px; 
+            height: 320px;
+            transform: scale(0);
+            z-index: 10;
+            animation: boss-move 2.5s cubic-bezier(0.25, 1, 0.3, 1) forwards;
+        }
+
+        /* Massive Canvas for Burner */
+        #burner-canvas {
+            position: absolute;
+            top: 50%;
+            left: 50%;
+            transform: translate(-50%, -50%);
+            z-index: 1; 
+            filter: blur(1px); 
+            mix-blend-mode: screen; 
+            pointer-events: none;
+        }
+
+        .smiley-img-wrapper {
+            position: absolute; 
+            inset: 0;
+            width: 100%; 
+            height: 100%;
+            background: #000; 
+            border-radius: 50%;
+            display: flex; 
+            align-items: center; 
+            justify-content: center;
+            border: 4px solid var(--orange);
+            z-index: 10; 
+            overflow: hidden;
+            box-shadow: inset 0 0 30px rgba(255, 100, 0, 0.5), 0 0 40px rgba(255, 50, 0, 0.8);
+            animation: joy-wobble 0.8s ease-in-out infinite;
+        }
+
+        .smiley-img-wrapper img {
+            width: 72%;
+            height: 72%;
+            object-fit: contain;
+            filter: drop-shadow(0 0 50px rgba(255,240,0,1)) drop-shadow(0 0 100px rgba(255,180,0,0.8));
+        }
+
+        /* --- KEYFRAMES --- */
+        @keyframes joy-wobble {
+            0%   { transform: scale(1) rotate(-4deg); }
+            50%  { transform: scale(1.08) rotate(4deg); }
+            100% { transform: scale(1) rotate(-4deg); }
+        }
+
+        @keyframes boss-move {
+            0% { transform: scale(0) rotate(-360deg); }
+            15% { transform: scale(1.2) rotate(0deg); }
+            85% { transform: scale(1.2) rotate(0deg); }
+            100% { transform: scale(0) rotate(360deg); }
+        }
+
+        @keyframes fade-black {
+            0% { opacity: 0; }
+            15% { opacity: 1; }
+            85% { opacity: 1; }
+            100% { opacity: 0; }
+        }
+
+        @keyframes shockwave-exp {
+            0% { transform: translate(-50%, -50%) scale(0.8); opacity: 1; border-width: 12px; }
+            100% { transform: translate(-50%, -50%) scale(10); opacity: 0; border-width: 1px; }
+        }
+    </style>
+</head>
+<body>
+    <div class="transition-container">
+        <audio id="transition-sfx" src="sfx/OBS_Oddmeister_Scene_Transition.wav" preload="auto"></audio>
+        
+        <div class="wipe-bg"></div>
+        <canvas id="embers-canvas"></canvas>
+
+        <div class="shockwave sw-1"></div>
+        <div class="shockwave sw-2"></div>
+        <div class="shockwave sw-3"></div>
+
+        <div class="smiley-boss">
+            <canvas id="burner-canvas" width="800" height="800"></canvas>
+            
+            <div class="smiley-img-wrapper">
+                <img src="assets/Smiley_Happy.png" alt="Smiley Boss">
+            </div>
+        </div>
+    </div>
+
+    <script>
+        // 1. Set up Canvases
+        const eCanvas = document.getElementById('embers-canvas');
+        const eCtx = eCanvas.getContext('2d');
+        const bCanvas = document.getElementById('burner-canvas');
+        const bCtx = bCanvas.getContext('2d');
+        
+        eCanvas.width = window.innerWidth;
+        eCanvas.height = window.innerHeight;
+
+        // 2. Play the Sound Effect
+        const sfx = document.getElementById('transition-sfx');
+        if (sfx) {
+            sfx.volume = 0.8; // Adjust from 0.0 to 1.0
+            sfx.play().catch(e => console.log("Audio requires interaction when tested outside of OBS"));
+        }
+
+        // 3. Particle System State
+        let embers = [];
+        let flames = [];
+        let isEmitting = true;
+        const startTime = Date.now();
+
+        // Stop creating particles after 1.9s so they clear off screen smoothly
+        setTimeout(() => isEmitting = false, 1900);
+
+        // 4. Particle Classes
+        class Ember {
+            constructor() {
+                this.x = eCanvas.width / 2;
+                this.y = eCanvas.height / 2;
+        
+                const angle = Math.random() * Math.PI * 2;
+                const speed = Math.random() * 18 + 4; 
+                this.vx = Math.cos(angle) * speed;
+                this.vy = Math.sin(angle) * speed;
+                this.size = Math.random() * 6 + 2;
+                this.life = 1.0;
+                this.decay = Math.random() * 0.02 + 0.015;
+                const colors = ['#ffcc00', '#ff6600', '#ff3300'];
+                this.color = colors[Math.floor(Math.random() * colors.length)];
+            }
+            
+            update() {
+                this.x += this.vx;
+                this.y += this.vy;
+                this.life -= this.decay;
+                this.size *= 0.95;
+            }
+            draw(ctx) {
+                ctx.globalAlpha = Math.max(0, this.life);
+                ctx.fillStyle = this.color;
+                ctx.shadowBlur = 10;
+                ctx.shadowColor = this.color;
+                ctx.beginPath();
+                ctx.arc(this.x, this.y, this.size, 0, Math.PI * 2);
+                ctx.fill();
+            }
+        }
+
+        class Flame {
+            constructor(flareBoost) {
+                this.angle = Math.random() * Math.PI * 2;
+                this.radius = 160; 
+                
+                this.x = 400 + Math.cos(this.angle) * this.radius;
+                this.y = 400 + Math.sin(this.angle) * this.radius;
+                
+                const speed = Math.random() * 2 + 1 + flareBoost;
+                this.vx = Math.cos(this.angle) * speed;
+                this.vy = Math.sin(this.angle) * speed;
+                
+                this.size = Math.random() * 12 + 8 + (flareBoost * 2);
+                this.life = 1.0;
+                this.decay = Math.random() * 0.04 + 0.03; 
+                
+                const hue = Math.floor(Math.random() * 40 + 10); 
+                this.color = `hsl(${hue}, 100%, 55%)`;
+            }
+            update() {
+                this.x += this.vx;
+                this.y += this.vy;
+                this.life -= this.decay;
+                this.size *= 0.92;
+            }
+            draw(ctx) {
+                ctx.globalAlpha = Math.max(0, this.life);
+                ctx.fillStyle = this.color;
+                ctx.beginPath();
+                ctx.arc(this.x, this.y, this.size, 0, Math.PI * 2);
+                ctx.fill();
+            }
+        }
+
+        // 5. Main Animation Loop
+        function animate() {
+            const elapsed = Date.now() - startTime;
+
+            eCtx.clearRect(0, 0, eCanvas.width, eCanvas.height);
+            bCtx.clearRect(0, 0, bCanvas.width, bCanvas.height);
+            
+            bCtx.globalCompositeOperation = 'lighter';
+
+            if (isEmitting) {
+                let flareBoost = (elapsed > 300 && elapsed < 1000) ? Math.random() * 4 : 0;
+
+                for(let i = 0; i < 3; i++) embers.push(new Ember());
+                for(let i = 0; i < 8; i++) flames.push(new Flame(flareBoost)); 
+            }
+
+            for (let i = embers.length - 1; i >= 0; i--) {
+                embers[i].update();
+                embers[i].draw(eCtx);
+                if (embers[i].life <= 0) embers.splice(i, 1);
+            }
+
+            for (let i = flames.length - 1; i >= 0; i--) {
+                flames[i].update();
+                flames[i].draw(bCtx);
+                if (flames[i].life <= 0) flames.splice(i, 1);
+            }
+            
+            requestAnimationFrame(animate);
+        }
+
+        animate();
+
+        window.addEventListener('resize', () => {
+            eCanvas.width = window.innerWidth;
+            eCanvas.height = window.innerHeight;
+        });
+    </script>
+</body>
+</html>

@@ -1,0 +1,533 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <title>Oddmeister - Glitch Portal Transition</title>
+    <style>
+        * { margin: 0; padding: 0; box-sizing: border-box; }
+
+        body, html {
+            width: 100%; height: 100%;
+            overflow: hidden;
+            background: transparent;
+            font-family: monospace;
+        }
+
+        .transition-container {
+            position: relative;
+            width: 100vw; height: 100vh;
+            display: flex; align-items: center; justify-content: center;
+        }
+
+        /* Black scene wipe */
+        .wipe-bg {
+            position: absolute; inset: 0;
+            background: #000;
+            opacity: 0;
+            animation: scene-wipe 2.6s forwards;
+            z-index: 1;
+        }
+
+        /* Full-screen glitch canvas */
+        #glitch-canvas {
+            position: absolute; inset: 0;
+            width: 100%; height: 100%;
+            z-index: 3;
+            pointer-events: none;
+        }
+
+        /* Portal ring canvas */
+        #portal-canvas {
+            position: absolute;
+            z-index: 6;
+            pointer-events: none;
+        }
+
+        /* Smiley face */
+        .smiley-wrap {
+            position: relative;
+            width: 280px; height: 280px;
+            z-index: 10;
+            transform: scale(0);
+            animation: boss-in 2.6s cubic-bezier(0.16, 1.4, 0.3, 1) forwards;
+        }
+
+        .smiley-face {
+            position: absolute; inset: 0;
+            border-radius: 50%;
+            background: #000;
+            border: 3px solid #00ffcc;
+            display: flex; align-items: center; justify-content: center;
+            overflow: hidden;
+            box-shadow:
+                0 0 0 1px #00ffcc44,
+                0 0 20px #00ffcc88,
+                0 0 60px #00ffcc44,
+                inset 0 0 40px #001a1a;
+            animation: face-glitch 0.15s 0.4s steps(1) infinite;
+        }
+
+        .smiley-face img {
+            width: 70%; height: 70%;
+            object-fit: contain;
+            filter:
+                drop-shadow(0 0 8px #00ffcc)
+                drop-shadow(0 0 20px #00ffff88)
+                drop-shadow(2px 0 0 #ff003388)
+                drop-shadow(-2px 0 0 #0033ff88);
+            animation: img-chromatic 0.2s 0.5s steps(1) infinite;
+        }
+
+        /* Scanline overlay */
+        .scanlines {
+            position: absolute; inset: 0;
+            border-radius: 50%;
+            background: repeating-linear-gradient(
+                0deg,
+                transparent,
+                transparent 2px,
+                rgba(0,0,0,0.35) 2px,
+                rgba(0,0,0,0.35) 4px
+            );
+            z-index: 2;
+            pointer-events: none;
+        }
+
+        /* Corruption blocks */
+        .corrupt-block {
+            position: absolute;
+            height: 6px;
+            background: #00ffcc;
+            opacity: 0;
+            mix-blend-mode: screen;
+            pointer-events: none;
+            z-index: 8;
+        }
+
+        /* HUD elements */
+        .hud-ring {
+            position: absolute; inset: -20px;
+            border-radius: 50%;
+            border: 1px dashed #00ffcc44;
+            animation: hud-spin 2s linear infinite;
+        }
+        .hud-ring::before, .hud-ring::after {
+            content: '';
+            position: absolute;
+            width: 8px; height: 8px;
+            background: #00ffcc;
+            border-radius: 50%;
+            box-shadow: 0 0 10px #00ffcc;
+        }
+        .hud-ring::before { top: -4px; left: 50%; transform: translateX(-50%); }
+        .hud-ring::after { bottom: -4px; left: 50%; transform: translateX(-50%); }
+
+        .hud-ring-2 {
+            position: absolute; inset: -35px;
+            border-radius: 50%;
+            border: 1px solid #ff003322;
+            animation: hud-spin 3s linear infinite reverse;
+        }
+
+        /* Text glitch labels */
+        .glitch-label {
+            position: absolute;
+            color: #00ffcc;
+            font-size: 9px;
+            letter-spacing: 3px;
+            text-transform: uppercase;
+            opacity: 0;
+            animation: label-flash 2.6s forwards;
+            white-space: nowrap;
+        }
+        .label-top { top: -45px; left: 50%; transform: translateX(-50%); }
+        .label-bottom { bottom: -45px; left: 50%; transform: translateX(-50%); }
+
+        /* Corner brackets */
+        .bracket {
+            position: absolute;
+            width: 20px; height: 20px;
+            opacity: 0;
+            animation: bracket-in 2.6s 0.2s forwards;
+        }
+        .bracket-tl { top: -8px; left: -8px; border-top: 2px solid #00ffcc; border-left: 2px solid #00ffcc; }
+        .bracket-tr { top: -8px; right: -8px; border-top: 2px solid #00ffcc; border-right: 2px solid #00ffcc; }
+        .bracket-bl { bottom: -8px; left: -8px; border-bottom: 2px solid #00ffcc; border-left: 2px solid #00ffcc; }
+        .bracket-br { bottom: -8px; right: -8px; border-bottom: 2px solid #00ffcc; border-right: 2px solid #00ffcc; }
+
+        /* Pixel burst ring */
+        .pixel-ring {
+            position: absolute;
+            top: 50%; left: 50%;
+            width: 320px; height: 320px;
+            border-radius: 50%;
+            transform: translate(-50%, -50%) scale(0);
+            border: 2px solid transparent;
+            opacity: 0;
+            z-index: 5;
+            pointer-events: none;
+        }
+        .pr-1 { animation: pixel-burst 0.6s 0.3s cubic-bezier(0,.8,.5,1) forwards; border-color: #00ffcc; }
+        .pr-2 { animation: pixel-burst 0.6s 0.5s cubic-bezier(0,.8,.5,1) forwards; border-color: #ff0066; }
+        .pr-3 { animation: pixel-burst 0.6s 0.7s cubic-bezier(0,.8,.5,1) forwards; border-color: #0066ff; }
+
+        /* KEYFRAMES */
+        @keyframes scene-wipe {
+            0%   { opacity: 0; }
+            12%  { opacity: 1; }
+            85%  { opacity: 1; }
+            100% { opacity: 0; }
+        }
+
+        @keyframes boss-in {
+            0%   { transform: scale(0) rotate(180deg); filter: blur(20px) brightness(3); }
+            15%  { transform: scale(1.15) rotate(-5deg); filter: blur(0px) brightness(1.2); }
+            20%  { transform: scale(0.95) rotate(3deg); }
+            25%  { transform: scale(1.1) rotate(-2deg); }
+            30%  { transform: scale(1) rotate(0deg); filter: blur(0px) brightness(1); }
+            80%  { transform: scale(1) rotate(0deg); opacity: 1; filter: blur(0px); }
+            90%  { transform: scale(1.05) rotate(2deg); filter: blur(2px) brightness(2); }
+            100% { transform: scale(0) rotate(-180deg); filter: blur(20px) brightness(3); opacity: 0; }
+        }
+
+        @keyframes face-glitch {
+            0%   { clip-path: none; transform: translate(0,0); }
+            10%  { clip-path: polygon(0 30%, 100% 30%, 100% 50%, 0 50%); transform: translate(4px, 0); }
+            20%  { clip-path: none; transform: translate(0,0); }
+            30%  { clip-path: polygon(0 60%, 100% 60%, 100% 75%, 0 75%); transform: translate(-3px, 0); }
+            40%  { clip-path: none; transform: translate(0,0); }
+            100% { clip-path: none; transform: translate(0,0); }
+        }
+
+        @keyframes img-chromatic {
+            0%  { filter: drop-shadow(0 0 8px #00ffcc) drop-shadow(0 0 20px #00ffff88) drop-shadow(2px 0 0 #ff003388) drop-shadow(-2px 0 0 #0033ff88); }
+            50% { filter: drop-shadow(0 0 8px #00ffcc) drop-shadow(0 0 20px #00ffff88) drop-shadow(-4px 0 0 #ff003366) drop-shadow(4px 0 0 #0033ff66); }
+        }
+
+        @keyframes hud-spin { to { transform: rotate(360deg); } }
+
+        @keyframes label-flash {
+            0%, 8% { opacity: 0; }
+            15% { opacity: 1; }
+            80% { opacity: 1; }
+            95% { opacity: 0; }
+        }
+
+        @keyframes bracket-in {
+            0%   { opacity: 0; transform: scale(1.5); }
+            15%  { opacity: 1; transform: scale(1); }
+            85%  { opacity: 1; }
+            100% { opacity: 0; }
+        }
+
+        @keyframes pixel-burst {
+            0%   { transform: translate(-50%, -50%) scale(0); opacity: 1; }
+            60%  { opacity: 0.6; }
+            100% { transform: translate(-50%, -50%) scale(3.5); opacity: 0; }
+        }
+    </style>
+</head>
+<body>
+<div class="transition-container">
+    <audio id="sfx" src="sfx/OBS_Oddmeister_Scene_Transition.wav" preload="auto"></audio>
+
+    <div class="wipe-bg"></div>
+    <canvas id="glitch-canvas"></canvas>
+    <canvas id="portal-canvas" width="700" height="700"></canvas>
+
+    <!-- Pixel burst rings -->
+    <div class="pixel-ring pr-1"></div>
+    <div class="pixel-ring pr-2"></div>
+    <div class="pixel-ring pr-3"></div>
+
+    <!-- Corruption blocks scattered across screen -->
+    <div class="corrupt-block" id="cb1" style="top:15%;left:10%;width:200px;"></div>
+    <div class="corrupt-block" id="cb2" style="top:35%;left:60%;width:150px;background:#ff0066;"></div>
+    <div class="corrupt-block" id="cb3" style="top:65%;left:20%;width:300px;"></div>
+    <div class="corrupt-block" id="cb4" style="top:80%;left:70%;width:100px;background:#0066ff;"></div>
+    <div class="corrupt-block" id="cb5" style="top:25%;left:75%;width:180px;background:#ff0066;"></div>
+    <div class="corrupt-block" id="cb6" style="top:55%;left:5%;width:250px;background:#0066ff;"></div>
+
+    <!-- Main smiley -->
+    <div class="smiley-wrap">
+        <!-- HUD rings -->
+        <div class="hud-ring"></div>
+        <div class="hud-ring-2"></div>
+
+        <!-- Corner brackets -->
+        <div class="bracket bracket-tl"></div>
+        <div class="bracket bracket-tr"></div>
+        <div class="bracket bracket-bl"></div>
+        <div class="bracket bracket-br"></div>
+
+        <!-- Labels -->
+        <div class="glitch-label label-top">[ ODDMEISTER.EXE ]</div>
+        <div class="glitch-label label-bottom">// SIGNAL_LOCKED //</div>
+
+        <!-- Face -->
+        <div class="smiley-face">
+            <div class="scanlines"></div>
+            <img src="assets/Smiley_Happy.png" alt="Oddmeister">
+        </div>
+    </div>
+</div>
+
+<script>
+// ---- Audio ----
+const sfx = document.getElementById('sfx');
+if (sfx) { sfx.volume = 0.8; sfx.play().catch(()=>{}); }
+
+// ---- Glitch Canvas (full screen scanline tearing) ----
+const gc = document.getElementById('glitch-canvas');
+const gx = gc.getContext('2d');
+gc.width = window.innerWidth;
+gc.height = window.innerHeight;
+
+// ---- Portal Canvas (spinning digital ring) ----
+const pc = document.getElementById('portal-canvas');
+const px = pc.getContext('2d');
+pc.style.position = 'absolute';
+pc.style.left = '50%';
+pc.style.top = '50%';
+pc.style.transform = 'translate(-50%, -50%)';
+
+const startTime = Date.now();
+let active = true;
+setTimeout(() => active = false, 2100);
+
+// Corruption block timing
+const blocks = document.querySelectorAll('.corrupt-block');
+function flashBlocks() {
+    blocks.forEach(b => {
+        const delay = Math.random() * 600;
+        const duration = Math.random() * 120 + 40;
+        setTimeout(() => {
+            b.style.opacity = '1';
+            b.style.height = (Math.random() * 10 + 3) + 'px';
+            setTimeout(() => { b.style.opacity = '0'; }, duration);
+        }, delay);
+    });
+}
+// Repeated block flashing for first 1.8 sec
+const blockTimer = setInterval(() => {
+    if (Date.now() - startTime > 1800) { clearInterval(blockTimer); return; }
+    flashBlocks();
+}, 150);
+
+// ---- Glitch Particles (data fragments) ----
+class DataFragment {
+    constructor() { this.reset(); }
+    reset() {
+        this.x = gc.width / 2 + (Math.random() - 0.5) * 30;
+        this.y = gc.height / 2 + (Math.random() - 0.5) * 30;
+        const angle = Math.random() * Math.PI * 2;
+        const speed = Math.random() * 12 + 3;
+        this.vx = Math.cos(angle) * speed;
+        this.vy = Math.sin(angle) * speed;
+        this.w = Math.floor(Math.random() * 30 + 4);
+        this.h = Math.floor(Math.random() * 6 + 2);
+        this.life = 1;
+        this.decay = Math.random() * 0.03 + 0.02;
+        const palette = ['#00ffcc', '#ff0066', '#0066ff', '#ffff00', '#ff6600'];
+        this.color = palette[Math.floor(Math.random() * palette.length)];
+    }
+    update() {
+        this.x += this.vx;
+        this.y += this.vy;
+        this.vx *= 0.94;
+        this.vy *= 0.94;
+        this.life -= this.decay;
+    }
+    draw(ctx) {
+        ctx.globalAlpha = Math.max(0, this.life) * 0.85;
+        ctx.fillStyle = this.color;
+        ctx.shadowBlur = 6;
+        ctx.shadowColor = this.color;
+        ctx.fillRect(this.x - this.w/2, this.y - this.h/2, this.w, this.h);
+        ctx.shadowBlur = 0;
+    }
+}
+
+let frags = [];
+
+// ---- Scanline Tear Effect ----
+function drawScanlineTears(ctx, t) {
+    const intensity = Math.max(0, Math.sin(t * 0.004) * 0.5 + 0.5);
+    const count = Math.floor(intensity * 8);
+    for (let i = 0; i < count; i++) {
+        const y = Math.random() * gc.height;
+        const h = Math.random() * 4 + 1;
+        const x = Math.random() * gc.width;
+        const w = Math.random() * 200 + 50;
+        ctx.globalAlpha = Math.random() * 0.3 * intensity;
+        ctx.fillStyle = Math.random() > 0.5 ? '#00ffcc' : '#ff0066';
+        ctx.fillRect(x, y, w, h);
+    }
+    ctx.globalAlpha = 1;
+}
+
+// ---- Portal Ring (spinning arc segments) ----
+class PortalArc {
+    constructor(i, total) {
+        this.index = i;
+        this.total = total;
+        this.baseAngle = (i / total) * Math.PI * 2;
+        this.len = (Math.random() * 0.4 + 0.1) * Math.PI * 2 / total;
+        this.speed = (Math.random() * 0.05 + 0.02) * (Math.random() > 0.5 ? 1 : -1);
+        this.angle = this.baseAngle;
+        this.r = 160 + (Math.random() - 0.5) * 20;
+        this.colors = ['#00ffcc', '#ff0066', '#0066ff', '#00ffff'];
+        this.color = this.colors[i % this.colors.length];
+        this.width = Math.random() * 4 + 1;
+        this.glitch = 0;
+    }
+    update(t) {
+        this.angle += this.speed;
+        // Random glitch jumps
+        if (Math.random() < 0.02) {
+            this.glitch = (Math.random() - 0.5) * 0.5;
+        } else {
+            this.glitch *= 0.9;
+        }
+    }
+    draw(ctx, cx, cy, scale) {
+        const a = this.angle + this.glitch;
+        ctx.beginPath();
+        ctx.arc(cx, cy, this.r * scale, a, a + this.len);
+        ctx.strokeStyle = this.color;
+        ctx.lineWidth = this.width;
+        ctx.globalAlpha = 0.8;
+        ctx.shadowBlur = 15;
+        ctx.shadowColor = this.color;
+        ctx.stroke();
+        ctx.shadowBlur = 0;
+        ctx.globalAlpha = 1;
+    }
+}
+
+const arcs = Array.from({length: 24}, (_, i) => new PortalArc(i, 24));
+
+// Inner hex grid dots
+class HexDot {
+    constructor() {
+        const angle = Math.random() * Math.PI * 2;
+        const r = Math.random() * 100;
+        this.x = 350 + Math.cos(angle) * r;
+        this.y = 350 + Math.sin(angle) * r;
+        this.size = Math.random() * 2 + 0.5;
+        this.pulse = Math.random() * Math.PI * 2;
+        this.color = Math.random() > 0.5 ? '#00ffcc44' : '#0066ff44';
+    }
+    draw(ctx, t) {
+        const alpha = (Math.sin(this.pulse + t * 0.003) * 0.5 + 0.5) * 0.6;
+        ctx.globalAlpha = alpha;
+        ctx.fillStyle = this.color;
+        ctx.beginPath();
+        ctx.arc(this.x, this.y, this.size, 0, Math.PI * 2);
+        ctx.fill();
+    }
+}
+const dots = Array.from({length: 80}, () => new HexDot());
+
+function animate() {
+    const t = Date.now() - startTime;
+    const elapsed = t;
+    const progress = Math.min(elapsed / 2600, 1);
+
+    // Scale portal based on animation curve (in and out)
+    let pScale = 0;
+    if (progress < 0.12) pScale = progress / 0.12;
+    else if (progress < 0.85) pScale = 1;
+    else pScale = 1 - (progress - 0.85) / 0.15;
+
+    gx.clearRect(0, 0, gc.width, gc.height);
+    px.clearRect(0, 0, 700, 700);
+
+    // Global scanline tearing
+    if (active) drawScanlineTears(gx, elapsed);
+
+    // Emit data fragments
+    if (active && elapsed < 1900) {
+        for (let i = 0; i < 4; i++) frags.push(new DataFragment());
+    }
+
+    // Update/draw fragments
+    gx.save();
+    for (let i = frags.length - 1; i >= 0; i--) {
+        frags[i].update();
+        frags[i].draw(gx);
+        if (frags[i].life <= 0) frags.splice(i, 1);
+    }
+    gx.restore();
+    gx.globalAlpha = 1;
+
+    // Portal canvas
+    if (pScale > 0) {
+        const cx = 350, cy = 350;
+
+        // Dim inner circle
+        const grad = px.createRadialGradient(cx, cy, 0, cx, cy, 170 * pScale);
+        grad.addColorStop(0, 'rgba(0,255,204,0.04)');
+        grad.addColorStop(0.7, 'rgba(0,50,80,0.02)');
+        grad.addColorStop(1, 'rgba(0,0,0,0)');
+        px.fillStyle = grad;
+        px.beginPath();
+        px.arc(cx, cy, 170 * pScale, 0, Math.PI * 2);
+        px.fill();
+
+        // Hex dots
+        for (const dot of dots) dot.draw(px, elapsed);
+        px.globalAlpha = 1;
+
+        // Arcs
+        for (const arc of arcs) {
+            arc.update(elapsed);
+            arc.draw(px, cx, cy, pScale);
+        }
+
+        // Outer glow ring
+        px.beginPath();
+        px.arc(cx, cy, 155 * pScale, 0, Math.PI * 2);
+        px.strokeStyle = '#00ffcc';
+        px.lineWidth = 1;
+        px.globalAlpha = 0.3 * pScale;
+        px.shadowBlur = 30;
+        px.shadowColor = '#00ffcc';
+        px.stroke();
+        px.shadowBlur = 0;
+        px.globalAlpha = 1;
+
+        // Rotating dashes
+        px.save();
+        px.translate(cx, cy);
+        px.rotate(elapsed * 0.001);
+        for (let i = 0; i < 12; i++) {
+            const a = (i / 12) * Math.PI * 2;
+            const r1 = 170 * pScale, r2 = 185 * pScale;
+            px.beginPath();
+            px.moveTo(Math.cos(a) * r1, Math.sin(a) * r1);
+            px.lineTo(Math.cos(a) * r2, Math.sin(a) * r2);
+            px.strokeStyle = '#00ffcc';
+            px.lineWidth = 2;
+            px.globalAlpha = 0.6 * pScale;
+            px.shadowBlur = 8;
+            px.shadowColor = '#00ffcc';
+            px.stroke();
+        }
+        px.restore();
+        px.globalAlpha = 1;
+        px.shadowBlur = 0;
+    }
+
+    requestAnimationFrame(animate);
+}
+
+animate();
+
+window.addEventListener('resize', () => {
+    gc.width = window.innerWidth;
+    gc.height = window.innerHeight;
+});
+</script>
+</body>
+</html>
